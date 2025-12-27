@@ -14,15 +14,17 @@
 class SOverlay;
 
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGuideEventDynamic, const FName&, InTag, UWidget*, InGuideWidget);
-
-
-UCLASS(meta = (DisplayName = "Guide Mask Register", Category = "Guide_Mask"))
+UCLASS(meta = (DisplayName = "Guide Mask Register", Category = "Guide_Mask", AutoExpandCategories = "Guide Mask Setting"))
 class GUIDEMASKUI_API UGuideMaskRegister : public UContentWidget
 {
 	GENERATED_BODY()
 
+public:
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
+	bool IsContains(const FName& InTag) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
+	UWidget* GetTagWidget(const FName& InTag, int Level = 1) const;
 
 private:
 	void SetLayer(UWidget* InLayer);
@@ -33,6 +35,9 @@ protected:
 	virtual void SynchronizeProperties() override;
 
 #if WITH_EDITOR
+	void ConstructWidgetTree(OUT TMap<int, UWidget*>& OutTree, UWidget* InWidget, int& InKey) const;
+	void ForeachEntryClass(OUT TMap<int, UWidget*>& OutTree, TSubclassOf<UUserWidget> InEntryClass, int& InKey) const;
+	void ForeachEntry(OUT TMap<int, UWidget*>& OutTree, UUserWidget* InEntry, int& InKey) const;
 	void CreatePreviewLayer(const FGeometry& InViewportGeometry);
 
 	virtual const FText GetPaletteCategory() override;
@@ -53,22 +58,20 @@ private:
 	UPROPERTY(EditInstanceOnly, meta = (Category = "Guide Mask Setting", GetOptions = "GetTagOptions", AllowPrivateAccess = "true"))
 	FName PreviewWidgetTag;
 
+	UPROPERTY(EditInstanceOnly, meta = (Category = "Guide Mask Setting", GetOptions = "GetTagOptions", AllowPrivateAccess = "true", ClampMin = "1"))
+	int PreviewTreeLevel = 1;
+
+	UPROPERTY(VisibleInstanceOnly, meta = (Category = "Guide Mask Setting", AllowPrivateAccess = "true", DisplayAfter = "TagWidgetList"))
+	TMap<int /*Node Level*/, UWidget*> TreeLevels {};
+#endif
+
 	UPROPERTY(EditInstanceOnly, meta = (Category = "Guide Mask Setting", AllowPrivateAccess = "true"))
 	TMap<FName, UWidget*> TagWidgetList;
-#endif
 
 private:
 	TSharedPtr<SOverlay> Overlay;
 	
 	UPROPERTY(Transient)
 	UWidget* LayerContent = nullptr;
-
-public:
-	UPROPERTY(BlueprintAssignable, Category = "Events", meta = (DisplayName = "On Show Guide"))
-	FOnGuideEventDynamic OnShowEvent;
-
-	UPROPERTY(BlueprintAssignable, Category = "Events", meta = (DisplayName = "On Complete Guide Action"))
-	FOnGuideEventDynamic OnCompleteActionEvent;
-
 
 };

@@ -40,6 +40,7 @@ public class GuideMaskUI : ModuleRules
                 "Slate",
                 "SlateCore",
                 "UMG",
+                "InputCore"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

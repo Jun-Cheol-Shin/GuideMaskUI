@@ -3,10 +3,82 @@
 
 #include "GuideLayerBase.h"
 
+#include "Components/SizeBoxSlot.h"
 #include "Components/Image.h"
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/SizeBox.h"
+
+#include "Blueprint/WidgetLayoutLibrary.h"
+
+#include "../GuideMaskSettings.h"
+
+void UGuideLayerBase::OnStartGuide()
+{
+
+}
+
+void UGuideLayerBase::OnEndGuide()
+{
+
+}
+
+FReply UGuideLayerBase::OnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
+{
+	if (nullptr != BoxBaseWidget && nullptr != GuideBoxPanel && ESlateVisibility::Collapsed == GuideBoxPanel->GetVisibility())
+	{
+		BoxBaseWidget->ForcedEndAction();
+	}
+
+	return FReply::Handled();
+}
+
+FReply UGuideLayerBase::OnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InEvent)
+{
+	if (nullptr != BoxBaseWidget && nullptr != GuideBoxPanel && ESlateVisibility::Collapsed == GuideBoxPanel->GetVisibility())
+	{
+		BoxBaseWidget->ForcedEndAction();
+	}
+
+	return FReply::Handled();
+}
+
+FReply UGuideLayerBase::OnTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InEvent)
+{
+	if (nullptr != BoxBaseWidget && nullptr != GuideBoxPanel && ESlateVisibility::Collapsed == GuideBoxPanel->GetVisibility())
+	{
+		BoxBaseWidget->ForcedEndAction();
+	}
+
+	return FReply::Handled();
+}
+
+void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParam)
+{
+	GuideWidget = InWidget;
+	FGeometry ViewportGeo = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
+	SetGuide(ViewportGeo, InWidget);
+
+	if (nullptr != BoxBaseWidget && InParam.ActionType != EGuideActionType::None_Action)
+	{
+		BoxBaseWidget->SetGuideWidget(InWidget, InParam);
+
+		if (nullptr != GuideBoxPanel)
+		{
+			GuideBoxPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		}
+	}
+
+	else
+	{
+		if (nullptr != GuideBoxPanel)
+		{
+			GuideBoxPanel->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	OnStartGuide();
+}
 
 void UGuideLayerBase::SetGuide(const FGeometry& InViewportGeometry, UWidget* InWidget)
 {
@@ -28,7 +100,6 @@ void UGuideLayerBase::SetGuide(const FGeometry& InViewportGeometry, UWidget* InW
 	FVector2D TargetLocalSize = TargetLocalBottomRight - TargetLocalTopLeft;
 
 	SetGuideLayer(ScreenSize, TargetLocation, TargetLocalSize);
-	SetGuideBox(InWidget);
 }
 
 void UGuideLayerBase::SetEnableAnim(bool bIsEnable)
@@ -121,11 +192,6 @@ void UGuideLayerBase::SetMaterialTransform(const FVector2D& InViewportSize, cons
 	}
 }
 
-void UGuideLayerBase::SetGuideBox(UWidget* InWidget)
-{
-
-}
-
 void UGuideLayerBase::NativeConstruct()
 {
 	Super::NativeConstruct();
@@ -144,20 +210,37 @@ void UGuideLayerBase::NativeConstruct()
 
 	if (nullptr != GuideBoxPanel)
 	{
-		GuideBoxPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		GuideBoxPanel->SetVisibility(ESlateVisibility::Collapsed);
 	}
 
-	/*if (nullptr != GuideMaskBox)
+	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
+	if (ensureAlways(Settings) && Settings->DefaultBox.ToSoftObjectPath().IsValid())
 	{
-		GuideMaskBox->SetVisibility(ESlateVisibility::Visible);
-		GuideMaskBox->OnPostAction.BindUObject(this, &UUIGuideLayer::OnPostAction);
-	}*/
+		TSubclassOf<UGuideBoxBase> BoxBaseClass = Settings->DefaultBox.LoadSynchronous();
+
+		BoxBaseWidget = CreateWidget<UGuideBoxBase>(this, BoxBaseClass);
+
+		if (ensure(BoxBaseWidget))
+		{
+			if (USizeBoxSlot* PanelSlot = Cast<USizeBoxSlot>(GuideBoxPanel->AddChild(BoxBaseWidget)))
+			{
+				PanelSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+				PanelSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+			}
 
 
+			BoxBaseWidget->SetVisibility(ESlateVisibility::Visible);
+			BoxBaseWidget->OnPostAction.BindUObject(this, &UGuideLayerBase::OnEndGuide);
+		}
+	}
+
+
+	FViewport::ViewportResizedEvent.AddUObject(this, &UGuideLayerBase::OnResizedViewport);
 }
 
 void UGuideLayerBase::NativeDestruct()
 {
+	FViewport::ViewportResizedEvent.RemoveAll(this);
 	MaterialInstance = nullptr;
 
 	Super::NativeDestruct();
@@ -165,38 +248,19 @@ void UGuideLayerBase::NativeDestruct()
 
 FReply UGuideLayerBase::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
-	return Super::NativeOnKeyUp(InGeometry, InKeyEvent);
-
-	/**if (nullptr != GuideBoxPanel && ESlateVisibility::HitTestInvisible == GuideBoxPanel->GetVisibility())
-	{
-		GuideMaskBox->ForceComplete();
-	}*/
-
+	return OnKeyUp(InGeometry, InKeyEvent);
 }
 
 FReply UGuideLayerBase::NativeOnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InEvent)
 {
-	return Super::NativeOnMouseButtonUp(InGeometry, InEvent);
 
-	/*if (nullptr != GuideBoxPanel && ESlateVisibility::HitTestInvisible == GuideBoxPanel->GetVisibility())
-	{
-		GuideMaskBox->ForceComplete();
-	}*/
-
+	return OnMouseButtonUp(InGeometry, InEvent);
 }
 
 FReply UGuideLayerBase::NativeOnTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InEvent)
 {
-	return Super::NativeOnTouchEnded(InGeometry, InEvent);
-
 	// Mobile Mode
-
-	/*if (nullptr != GuideBoxPanel && ESlateVisibility::HitTestInvisible == GuideBoxPanel->GetVisibility())
-	{
-		GuideMaskBox->ForceComplete();
-	}*/
-
-
+	return OnTouchEnded(InGeometry, InEvent);
 }
 
 void UGuideLayerBase::SynchronizeProperties()
@@ -212,7 +276,10 @@ void UGuideLayerBase::SynchronizeProperties()
 
 void UGuideLayerBase::OnResizedViewport(FViewport* InViewport, uint32 InMessage)
 {
-
+	if (true == GuideWidget.IsValid())
+	{
+		SetGuide(GuideWidget.Get());
+	}
 }
 
 

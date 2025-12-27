@@ -9,6 +9,9 @@
 /**
  * 
  */
+
+class UGuideMaskRegister;
+
 UCLASS()
 class GUIDEMASKUI_API UGuideMaskUIFunctionLibrary : public UBlueprintFunctionLibrary
 {
@@ -16,11 +19,17 @@ class GUIDEMASKUI_API UGuideMaskUIFunctionLibrary : public UBlueprintFunctionLib
 	
 	
 public:
-	// TODO : 리스트 엔트리 찾기 함수 (int Depth)
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
+	static void ShowGuideWidget(const UObject* WorldContextObject, UWidget* InTagWidget);
 
-	// TODO : World에서 Register 위젯 긁어오기
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
+	static void ShowGuideListEntry(const UObject* WorldContextObject, UWidget* InTagWidget, UObject* InListItem);
 
-	// TODO : 
-	
+
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject", DeterminesOutputType = "WidgetClass", DynamicOutputParam = "FoundWidgets"))
+	static void GetAllGuideRegisters(const UObject* WorldContextObject, TArray<UGuideMaskRegister*>& FoundWidgets);
+
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
+	static UWidget* GetTagWidget(const UObject* WorldContextObject, const FName& InTag, int InLevel = 1);
 	
 };

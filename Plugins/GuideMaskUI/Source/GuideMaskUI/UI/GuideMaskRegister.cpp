@@ -58,6 +58,75 @@ void UGuideMaskRegister::ShowPreviewDebug()
 	}
 }
 
+void UGuideMaskRegister::ConstructWidgetTree(OUT TMap<int, UWidget*>& OutTree, UWidget* InWidget, int& InKey) const
+{
+	if (nullptr == InWidget)
+	{
+		return;
+	}
+
+	OutTree.Emplace(InKey++, InWidget);
+
+	if (UListViewBase* ListView = Cast<UListViewBase>(InWidget))
+	{
+		if (true == ListView->GetDisplayedEntryWidgets().IsEmpty())
+		{
+			ForeachEntryClass(OutTree, ListView->GetEntryWidgetClass(), InKey);
+		}
+
+		else
+		{
+			ForeachEntry(OutTree, *ListView->GetDisplayedEntryWidgets().begin(), InKey);
+		}
+
+	}
+
+	else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(InWidget))
+	{
+		if (true == EntryBox->GetAllEntries().IsEmpty())
+		{
+			ForeachEntryClass(OutTree, EntryBox->GetEntryWidgetClass(), InKey);
+		}
+
+		else
+		{
+			ForeachEntry(OutTree, *EntryBox->GetAllEntries().begin(), InKey);
+		}
+	}
+}
+
+void UGuideMaskRegister::ForeachEntryClass(OUT TMap<int, UWidget*>& OutTree, TSubclassOf<UUserWidget> InEntryClass, int& InKey) const
+{
+	if (UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), InEntryClass))
+	{
+		ForeachEntry(OutTree, EntryWidget, InKey);
+	}
+}
+
+void UGuideMaskRegister::ForeachEntry(OUT TMap<int, UWidget*>& OutTree, UUserWidget* InEntry, int& InKey) const
+{ 
+	if (InEntry)
+	{
+		TArray<UWidget*> Childs;
+
+		if (true == InEntry->GetClass()->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+		{
+			IEntryGuideIdentifiable::Execute_GetDesiredNestedWidgets(InEntry, OUT Childs);
+		}
+
+		else if (IEntryGuideIdentifiable* Identify = Cast<IEntryGuideIdentifiable>(InEntry))
+		{
+			Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
+		}
+
+
+		for (int i = 0; i < Childs.Num(); ++i)
+		{
+			ConstructWidgetTree(OutTree, Childs[i], InKey);
+		}
+	}
+}
+
 void UGuideMaskRegister::CreatePreviewLayer(const FGeometry& InViewportGeometry)
 {
 	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
@@ -68,15 +137,33 @@ void UGuideMaskRegister::CreatePreviewLayer(const FGeometry& InViewportGeometry)
 
 	if (UGuideLayerBase* Layer = CreateWidget<UGuideLayerBase>(GetWorld(), Settings->DefaultLayer.Get()))
 	{
-		if (TagWidgetList.Contains(PreviewWidgetTag))
+		UWidget** FoundWidget = TagWidgetList.Find(PreviewWidgetTag);
+		if (nullptr != FoundWidget && nullptr != *FoundWidget)
 		{
-			UWidget* FoundWidget = TagWidgetList[PreviewWidgetTag];
+			int Key = 1;
+			ConstructWidgetTree(OUT TreeLevels, *FoundWidget, Key);
 
-			if (FoundWidget)
+			UWidget** Widget = TreeLevels.Find(PreviewTreeLevel);
+
+			if (Widget && *Widget)
 			{
 				SetLayer(Layer);
-				Layer->SetGuide(/*ContentWidget->GetCachedWidget()->GetTickSpaceGeometry()*/ InViewportGeometry, FoundWidget);
+
+				UWidget* PreviewWidget = nullptr;
+
+				if (UListViewBase* ListView = Cast<UListViewBase>(*Widget))
+				{
+					PreviewWidget = false == ListView->GetDisplayedEntryWidgets().IsEmpty() ? *ListView->GetDisplayedEntryWidgets().begin() : nullptr;
+				}
+
+				else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(*Widget))
+				{
+					PreviewWidget = false == EntryBox->GetAllEntries().IsEmpty() ? *EntryBox->GetAllEntries().begin() : nullptr;
+				}
+
+				Layer->SetGuide(InViewportGeometry, nullptr != PreviewWidget ? PreviewWidget : *Widget);
 			}
+
 		}
 	}
 }
@@ -104,33 +191,6 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 {
 	Super::ValidateCompiledDefaults(CompileLog);
 
-
-	for (auto& [Tag, Widget] : TagWidgetList)
-	{
-		if (UTreeView* TreeView = Cast<UTreeView>(Widget))
-		{
-			if (TreeView->GetEntryWidgetClass())
-			{
-
-			}
-		}
-
-		else if (UListView* ListView = Cast<UListView>(Widget))
-		{
-			if (ListView->GetEntryWidgetClass())
-			{
-				// TODO : 인터페이스 상속 체크 EntryGuideIdentifiable
-
-			}
- 		}
-
-		else if (UDynamicEntryBox* DynamicEntryBox = Cast<UDynamicEntryBox>(Widget))
-		{
-
-		}
-	}
-	
-	
 	if (UWidgetBlueprint* WidgetBlueprint = GetTypedOuter<UWidgetBlueprint>())
 	{
 		if (WidgetBlueprint->GeneratedClass)
@@ -146,11 +206,88 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 			}
 		}
 	}
-	
+
+
+	for (auto& [Tag, Widget] : TagWidgetList)
+	{
+		if (UListViewBase* ListView = Cast<UListViewBase>(Widget))
+		{
+			UClass* WidgetClass = ListView->GetEntryWidgetClass();
+			if (WidgetClass && false == WidgetClass->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			{
+				CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister", 
+					"{0} Class doesn't implement EntryGuideIdentifiable Interface!"), 
+					FText::FromString(WidgetClass->GetName())));
+			}
+
+		}
+
+		else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(Widget))
+		{
+			UClass* WidgetClass = EntryBox->GetEntryWidgetClass();
+			if (WidgetClass && false == WidgetClass->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			{
+				CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister",
+					"{0} Class doesn't implement EntryGuideIdentifiable Interface!"),
+					FText::FromString(WidgetClass->GetName())));
+			}
+		}
+
+		else if (UUserWidget* UserWidget = Cast<UUserWidget>(Widget))
+		{
+			if (nullptr == UserWidget->GetClass())
+			{
+				return;
+			}
+
+			else if (UWidgetBlueprint* GeneratedWidget = Cast<UWidgetBlueprint>(UserWidget->GetClass()->ClassGeneratedBy))
+			{
+				if (GeneratedWidget->WidgetTree && GeneratedWidget->WidgetTree->RootWidget)
+				{
+					if (UGuideMaskRegister* Register = Cast<UGuideMaskRegister>(GeneratedWidget->WidgetTree->RootWidget))
+					{
+						CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister",
+							"Do not containing GuideRegister in TagWidgetList. Widget Name : {0}"),
+							FText::FromString(UserWidget->GetName())));
+					}
+				}
+			}
+		}
+	}
+
 
 }
 #endif
 
+
+bool UGuideMaskRegister::IsContains(const FName& InTag) const
+{
+	return TagWidgetList.Contains(InTag);
+}
+
+UWidget* UGuideMaskRegister::GetTagWidget(const FName& InTag, int Level) const
+{
+	if (false == IsContains(InTag))
+	{
+		return nullptr;
+	}
+
+
+	UWidget* Widget = TagWidgetList.FindRef(InTag);
+	if (Level != 1)
+	{
+		int Key = 1;
+		TMap<int, UWidget*> GuideWidgetTree;
+		ConstructWidgetTree(OUT GuideWidgetTree, Widget, Key);
+
+		if (GuideWidgetTree.Contains(Level))
+		{
+			return GuideWidgetTree[Level];
+		}
+	}
+
+	return Widget;
+}
 
 void UGuideMaskRegister::SetLayer(UWidget* InLayer)
 {
@@ -214,7 +351,24 @@ void UGuideMaskRegister::SynchronizeProperties()
 {
 	Super::SynchronizeProperties();
 
+#if WITH_EDITOR
 
+	TreeLevels.Reset();
+
+	if (TagWidgetList.Contains(PreviewWidgetTag))
+	{
+		UWidget* Widget = TagWidgetList.FindRef(PreviewWidgetTag);
+		int Key = 1;
+
+		ConstructWidgetTree(OUT TreeLevels, Widget, Key);
+
+		if (false == TreeLevels.Contains(PreviewTreeLevel))
+		{
+			PreviewTreeLevel = 1;
+		}
+	}
+
+#endif 
 }
 
 
