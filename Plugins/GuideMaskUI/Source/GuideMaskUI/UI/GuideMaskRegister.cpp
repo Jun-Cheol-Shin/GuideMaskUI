@@ -2,6 +2,7 @@
 
 
 #include "GuideMaskRegister.h"
+#include "../GuideMaskUIFunctionLibrary.h"
 #include "Components/PanelSlot.h"
 #include "Components/OverlaySlot.h"
 
@@ -43,8 +44,14 @@ void UGuideMaskRegister::ShowPreviewDebug()
 	ForceLayoutPrepass();
 
 	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
-	if (ensureAlways(Settings) && Settings->DefaultLayer.ToSoftObjectPath().IsValid())
+	if (ensureAlways(Settings))
 	{
+		if (!ensureAlwaysMsgf(Settings->DefaultLayer.ToSoftObjectPath().IsValid(),
+			TEXT("Invalid Layer base class in the project settings.")))
+		{
+			return;
+		}
+
 		UWidget* ContentWidget = GetContent();
 		if (ContentWidget && ContentWidget->GetCachedWidget())
 		{
@@ -54,75 +61,6 @@ void UGuideMaskRegister::ShowPreviewDebug()
 				{
 					CreatePreviewLayer(Geometry);
 				}));
-		}
-	}
-}
-
-void UGuideMaskRegister::ConstructWidgetTree(OUT TMap<int, UWidget*>& OutTree, UWidget* InWidget, int& InKey) const
-{
-	if (nullptr == InWidget)
-	{
-		return;
-	}
-
-	OutTree.Emplace(InKey++, InWidget);
-
-	if (UListViewBase* ListView = Cast<UListViewBase>(InWidget))
-	{
-		if (true == ListView->GetDisplayedEntryWidgets().IsEmpty())
-		{
-			ForeachEntryClass(OutTree, ListView->GetEntryWidgetClass(), InKey);
-		}
-
-		else
-		{
-			ForeachEntry(OutTree, *ListView->GetDisplayedEntryWidgets().begin(), InKey);
-		}
-
-	}
-
-	else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(InWidget))
-	{
-		if (true == EntryBox->GetAllEntries().IsEmpty())
-		{
-			ForeachEntryClass(OutTree, EntryBox->GetEntryWidgetClass(), InKey);
-		}
-
-		else
-		{
-			ForeachEntry(OutTree, *EntryBox->GetAllEntries().begin(), InKey);
-		}
-	}
-}
-
-void UGuideMaskRegister::ForeachEntryClass(OUT TMap<int, UWidget*>& OutTree, TSubclassOf<UUserWidget> InEntryClass, int& InKey) const
-{
-	if (UUserWidget* EntryWidget = CreateWidget<UUserWidget>(GetWorld(), InEntryClass))
-	{
-		ForeachEntry(OutTree, EntryWidget, InKey);
-	}
-}
-
-void UGuideMaskRegister::ForeachEntry(OUT TMap<int, UWidget*>& OutTree, UUserWidget* InEntry, int& InKey) const
-{ 
-	if (InEntry)
-	{
-		TArray<UWidget*> Childs;
-
-		if (true == InEntry->GetClass()->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
-		{
-			IEntryGuideIdentifiable::Execute_GetDesiredNestedWidgets(InEntry, OUT Childs);
-		}
-
-		else if (IEntryGuideIdentifiable* Identify = Cast<IEntryGuideIdentifiable>(InEntry))
-		{
-			Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
-		}
-
-
-		for (int i = 0; i < Childs.Num(); ++i)
-		{
-			ConstructWidgetTree(OutTree, Childs[i], InKey);
 		}
 	}
 }
@@ -140,9 +78,7 @@ void UGuideMaskRegister::CreatePreviewLayer(const FGeometry& InViewportGeometry)
 		UWidget** FoundWidget = TagWidgetList.Find(PreviewWidgetTag);
 		if (nullptr != FoundWidget && nullptr != *FoundWidget)
 		{
-			int Key = 1;
-			ConstructWidgetTree(OUT TreeLevels, *FoundWidget, Key);
-
+			TreeLevels = UGuideMaskUIFunctionLibrary::GetWidgetTree(GetWorld(), *FoundWidget);
 			UWidget** Widget = TreeLevels.Find(PreviewTreeLevel);
 
 			if (Widget && *Widget)
@@ -276,18 +212,30 @@ UWidget* UGuideMaskRegister::GetTagWidget(const FName& InTag, int Level) const
 	UWidget* Widget = TagWidgetList.FindRef(InTag);
 	if (Level != 1)
 	{
-		int Key = 1;
-		TMap<int, UWidget*> GuideWidgetTree;
-		ConstructWidgetTree(OUT GuideWidgetTree, Widget, Key);
+		TMap<int, UWidget*> NewTree = UGuideMaskUIFunctionLibrary::GetWidgetTree(GetWorld(), Widget);
 
-		if (GuideWidgetTree.Contains(Level))
+		if (NewTree.Contains(Level))
 		{
-			return GuideWidgetTree[Level];
+			return NewTree[Level];
 		}
 	}
 
 	return Widget;
 }
+
+const TMap<FName, UWidget*>& UGuideMaskRegister::GetTagWidgetList() const
+{
+	return TagWidgetList;
+}
+
+TArray<FName> UGuideMaskRegister::GetTagList() const
+{
+	TArray<FName> Retval;
+	TagWidgetList.GenerateKeyArray(OUT Retval);
+
+	return Retval;
+}
+
 
 void UGuideMaskRegister::SetLayer(UWidget* InLayer)
 {
@@ -351,6 +299,21 @@ void UGuideMaskRegister::SynchronizeProperties()
 {
 	Super::SynchronizeProperties();
 
+	TArray<FName> RemovedTag;
+
+	for (auto& [Tag, Widget] : TagWidgetList)
+	{
+		if (nullptr == Widget)
+		{
+			RemovedTag.Add(Tag);
+		}
+	}
+
+	for (const FName& Tag : RemovedTag)
+	{
+		TagWidgetList.Remove(Tag);
+	}
+
 #if WITH_EDITOR
 
 	TreeLevels.Reset();
@@ -360,8 +323,7 @@ void UGuideMaskRegister::SynchronizeProperties()
 		UWidget* Widget = TagWidgetList.FindRef(PreviewWidgetTag);
 		int Key = 1;
 
-		ConstructWidgetTree(OUT TreeLevels, Widget, Key);
-
+		TreeLevels = UGuideMaskUIFunctionLibrary::GetWidgetTree(GetWorld(), Widget);
 		if (false == TreeLevels.Contains(PreviewTreeLevel))
 		{
 			PreviewTreeLevel = 1;

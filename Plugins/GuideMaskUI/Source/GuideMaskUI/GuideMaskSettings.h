@@ -6,6 +6,7 @@
 #include "Engine/DeveloperSettings.h"
 
 #include "UI/GuideLayerBase.h"
+#include "UI/GuideBoxBase.h"
 
 #include "GuideMaskSettings.generated.h"
 
@@ -27,5 +28,5 @@ public:
 	TSoftClassPtr<UGuideLayerBase> DefaultLayer;
 
 	UPROPERTY(EditAnywhere, Config, meta = (AllowedClasses = "/Script/GuideMaskUI.GuideBoxBase"))
-	TSoftClassPtr<UGuideLayerBase> DefaultBox;
+	TSoftClassPtr<UGuideBoxBase> DefaultBox;
 };

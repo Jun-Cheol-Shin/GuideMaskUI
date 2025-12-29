@@ -26,6 +26,12 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	UWidget* GetTagWidget(const FName& InTag, int Level = 1) const;
 
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
+	const TMap<FName, UWidget*>& GetTagWidgetList() const;
+
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
+	TArray<FName> GetTagList() const;
+
 private:
 	void SetLayer(UWidget* InLayer);
 
@@ -35,11 +41,6 @@ protected:
 	virtual void SynchronizeProperties() override;
 
 #if WITH_EDITOR
-	void ConstructWidgetTree(OUT TMap<int, UWidget*>& OutTree, UWidget* InWidget, int& InKey) const;
-	void ForeachEntryClass(OUT TMap<int, UWidget*>& OutTree, TSubclassOf<UUserWidget> InEntryClass, int& InKey) const;
-	void ForeachEntry(OUT TMap<int, UWidget*>& OutTree, UUserWidget* InEntry, int& InKey) const;
-	void CreatePreviewLayer(const FGeometry& InViewportGeometry);
-
 	virtual const FText GetPaletteCategory() override;
 	virtual void ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog) const override;
 
@@ -51,6 +52,8 @@ protected:
 
 	UFUNCTION()
 	TArray<FName> GetTagOptions() const;
+
+	void CreatePreviewLayer(const FGeometry& InViewportGeometry);
 #endif
 
 private:

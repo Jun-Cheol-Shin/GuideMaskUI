@@ -275,8 +275,12 @@ void UGuideBoxBase::OnEndedAction(const FPointerEvent& InEvent)
 		NativeOnMouseLeave(InEvent);
 	}
 
-	Clear();
+	if (ActionParam.ActionEvent.IsBound())
+	{
+		ActionParam.ActionEvent.Execute();
+	}
 
+	Clear();
 	OnPostAction.ExecuteIfBound();
 }
 
@@ -575,6 +579,11 @@ void UGuideBoxBase::Clear()
 	StartTime = 0.f;
 	TouchStartPos = FVector2D::Zero();
 	ActionWidget.Reset();
+
+	ActionParam.ActionEvent.Unbind();
+	ActionParam.ActionType = EGuideActionType::None_Action;
+	ActionParam.DragThresholdVectorSize = 0.f;
+	ActionParam.HoldSeconds = 0.f;
 }
 
 void UGuideBoxBase::OnChangedVisibility(ESlateVisibility InVisiblity)
@@ -623,8 +632,12 @@ FPointerEvent UGuideBoxBase::CreateMouseLikePointerEventFromTouch(const FPointer
 
 void UGuideBoxBase::ForcedEndAction()
 {
-	Clear();
+	if (ActionParam.ActionEvent.IsBound())
+	{
+		ActionParam.ActionEvent.Execute();
+	}
 
+	Clear();
 	OnPostAction.ExecuteIfBound();
 }
 

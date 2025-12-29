@@ -13,7 +13,7 @@ DECLARE_DYNAMIC_DELEGATE(FOnActionDynamicEvent);
 UENUM(BlueprintType)
 enum class EGuideActionType : uint8
 {
-	DownAndUp,
+	DownAndUp = 0,
 	Hold,
 
 	Drag,
@@ -42,6 +42,9 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (EditCondition = "EGuideActionType::Hold == ActionType", EditConditionHides))
 	float HoldSeconds = 0.f;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FOnActionDynamicEvent ActionEvent;
 };
 
 

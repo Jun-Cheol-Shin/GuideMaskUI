@@ -14,9 +14,6 @@ class UImage;
 class UGuideBoxBase;
 struct FGuideBoxActionParameters;
 
-
-
-
 UCLASS()
 class GUIDEMASKUI_API UGuideLayerBase : public UUserWidget
 {
@@ -24,9 +21,6 @@ class GUIDEMASKUI_API UGuideLayerBase : public UUserWidget
 
 	friend class UGuideMaskRegister;
 
-protected:
-	virtual void OnStartGuide();
-	virtual void OnEndGuide();
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
@@ -36,15 +30,24 @@ public:
 	void SetEnableAnim(bool bIsEnable);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
-	void SetAnimRate(float InRate);
-
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	void SetCircularShape(bool bIsEnable);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	void SetOpacity(float InOpacity);
 
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
+	void SetBoxOffset(const FMargin& InMargin);
+
+
 protected:
+	UFUNCTION(BlueprintNativeEvent, BlueprintCosmetic, Category = "Guide Layer", meta = (DisplayName = "On Start Action"))
+	void OnStartAction(UWidget* InWidget, const FGuideBoxActionParameters& InParam);
+	virtual void OnStartAction_Implementation(UWidget* InWidget, const FGuideBoxActionParameters& InParam) {};
+
+	UFUNCTION(BlueprintNativeEvent, BlueprintCosmetic, Category = "Guide Layer", meta = (DisplayName = "On End Action"))
+	void OnEndAction();
+	virtual void OnEndAction_Implementation() {};
+
 	virtual FReply OnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent);
 	virtual FReply OnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InEvent);
 	virtual FReply OnTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InEvent);
@@ -67,23 +70,28 @@ private:
 	void OnResizedViewport(FViewport* InViewport, uint32 InMessage);
 	
 protected:
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Layer Setting", AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
 	float Opacity = 0.8f;
 
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true", ClampMin = "0", ClampMax = "1"))
-	float AnimationRate = 0.8f;
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Layer Setting", AllowPrivateAccess = "true"))
+	bool bShapeCircle = false;
 
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true"))
-	bool bUseCircle = false;
-
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Layer Setting", AllowPrivateAccess = "true"))
 	bool bAnimated = false;
 
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true"))
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Layer Setting", AllowPrivateAccess = "true"))
+	FMargin GuideBoxOffset;
+
+
+#if WITH_EDITORONLY_DATA
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview Layer Setting", AllowPrivateAccess = "true"))
 	FVector2D ScreenPosition;
 
-	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview", AllowPrivateAccess = "true"))
-	FVector2D HighlightSize;
+	UPROPERTY(EditDefaultsOnly, meta = (Category = "Preview Layer Setting", AllowPrivateAccess = "true"))
+	FVector2D GuideSize;
+#endif
+
+
 
 protected:	
 	UPROPERTY(meta = (BindWidget, AllowPrivateAccess = "true"))

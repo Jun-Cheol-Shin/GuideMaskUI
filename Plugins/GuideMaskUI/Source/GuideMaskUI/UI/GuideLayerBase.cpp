@@ -13,15 +13,6 @@
 
 #include "../GuideMaskSettings.h"
 
-void UGuideLayerBase::OnStartGuide()
-{
-
-}
-
-void UGuideLayerBase::OnEndGuide()
-{
-
-}
 
 FReply UGuideLayerBase::OnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
@@ -55,6 +46,11 @@ FReply UGuideLayerBase::OnTouchEnded(const FGeometry& InGeometry, const FPointer
 
 void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParam)
 {
+	if (nullptr == InWidget)
+	{
+		return;
+	}
+
 	GuideWidget = InWidget;
 	FGeometry ViewportGeo = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
 	SetGuide(ViewportGeo, InWidget);
@@ -77,7 +73,7 @@ void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameter
 		}
 	}
 
-	OnStartGuide();
+	OnStartAction(InWidget, InParam);
 }
 
 void UGuideLayerBase::SetGuide(const FGeometry& InViewportGeometry, UWidget* InWidget)
@@ -99,7 +95,12 @@ void UGuideLayerBase::SetGuide(const FGeometry& InViewportGeometry, UWidget* InW
 	FVector2D TargetLocalTopLeft = InViewportGeometry.AbsoluteToLocal(InWidget->GetTickSpaceGeometry().GetAbsolutePosition());
 	FVector2D TargetLocalSize = TargetLocalBottomRight - TargetLocalTopLeft;
 
-	SetGuideLayer(ScreenSize, TargetLocation, TargetLocalSize);
+	const FVector2D NewPos = TargetLocation - FVector2D(GuideBoxOffset.Left, GuideBoxOffset.Top);
+	const FVector2D NewSize = TargetLocalSize + FVector2D(GuideBoxOffset.Left + GuideBoxOffset.Right, GuideBoxOffset.Top + GuideBoxOffset.Bottom);
+
+	SetGuideLayer(ScreenSize, 
+		NewPos, 
+		NewSize);
 }
 
 void UGuideLayerBase::SetEnableAnim(bool bIsEnable)
@@ -109,26 +110,18 @@ void UGuideLayerBase::SetEnableAnim(bool bIsEnable)
 	if (ensure(MaterialInstance))
 	{
 		MaterialInstance->SetScalarParameterValue(TEXT("Animate"), true == bAnimated ? 1.f : 0.f);
+		MaterialInstance->SetScalarParameterValue(TEXT("AnimSpeed"), true == bAnimated ? 1.f : 0.f);
 	}
 }
 
-void UGuideLayerBase::SetAnimRate(float InRate)
-{
-	AnimationRate = InRate;
-
-	if (ensure(MaterialInstance))
-	{
-		MaterialInstance->SetScalarParameterValue(TEXT("AnimSpeed"), AnimationRate);
-	}
-}
 
 void UGuideLayerBase::SetCircularShape(bool bIsEnable)
 {
-	bUseCircle = bIsEnable;
+	bShapeCircle = bIsEnable;
 
 	if (ensure(MaterialInstance))
 	{
-		MaterialInstance->SetScalarParameterValue(TEXT("Shape"), true == bUseCircle ? 1.f : 0.f);
+		MaterialInstance->SetScalarParameterValue(TEXT("Shape"), true == bShapeCircle ? 1.f : 0.f);
 	}
 }
 
@@ -139,6 +132,16 @@ void UGuideLayerBase::SetOpacity(float InOpacity)
 	if (ensure(MaterialInstance))
 	{
 		MaterialInstance->SetScalarParameterValue(TEXT("Opacity"), Opacity);
+	}
+}
+
+void UGuideLayerBase::SetBoxOffset(const FMargin& InMargin)
+{
+	GuideBoxOffset = InMargin;
+
+	if (true == GuideWidget.IsValid())
+	{
+		SetGuide(GuideWidget.Get());
 	}
 }
 
@@ -155,15 +158,6 @@ void UGuideLayerBase::SetGuideLayer(const FVector2D& InScreenSize, const FVector
 	}
 
 	SetMaterialTransform(InScreenSize, InTargetLoc, InTargetSize);
-
-	if (GuideBoxPanel)
-	{
-		if (UCanvasPanelSlot* BoxSlot = Cast<UCanvasPanelSlot>(GuideBoxPanel->Slot))
-		{
-			BoxSlot->SetSize(InTargetSize /* + InLayerParam.Padding */);
-			BoxSlot->SetPosition(InTargetLoc /*- InLayerParam.Padding * 0.5f */);
-		}
-	}	
 }
 
 void UGuideLayerBase::SetMaterialTransform(const FVector2D& InViewportSize, const FVector2D& InPosiiton, const FVector2D& InWidgetSize)
@@ -214,8 +208,14 @@ void UGuideLayerBase::NativeConstruct()
 	}
 
 	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
-	if (ensureAlways(Settings) && Settings->DefaultBox.ToSoftObjectPath().IsValid())
+	if (ensureAlways(Settings))
 	{
+		if (!ensureAlwaysMsgf(Settings->DefaultBox.ToSoftObjectPath().IsValid(), 
+			TEXT("Invalid Box base class in the project settings.")))
+		{
+			return;
+		}
+
 		TSubclassOf<UGuideBoxBase> BoxBaseClass = Settings->DefaultBox.LoadSynchronous();
 
 		BoxBaseWidget = CreateWidget<UGuideBoxBase>(this, BoxBaseClass);
@@ -230,7 +230,7 @@ void UGuideLayerBase::NativeConstruct()
 
 
 			BoxBaseWidget->SetVisibility(ESlateVisibility::Visible);
-			BoxBaseWidget->OnPostAction.BindUObject(this, &UGuideLayerBase::OnEndGuide);
+			BoxBaseWidget->OnPostAction.BindUObject(this, &UGuideLayerBase::OnEndAction);
 		}
 	}
 
@@ -271,6 +271,21 @@ void UGuideLayerBase::SynchronizeProperties()
 	{
 		MaterialInstance = BlackScreen->GetDynamicMaterial();
 	}
+
+
+#if WITH_EDITOR
+	if (nullptr != MaterialInstance)
+	{
+		SetEnableAnim(bAnimated);
+		SetCircularShape(bShapeCircle);
+		SetOpacity(Opacity);
+
+		const FVector2D NewPos = ScreenPosition - FVector2D(GuideBoxOffset.Left, GuideBoxOffset.Top);
+		const FVector2D NewSize = GuideSize + FVector2D(GuideBoxOffset.Left + GuideBoxOffset.Right, GuideBoxOffset.Top + GuideBoxOffset.Bottom);
+
+		SetMaterialTransform(FVector2D(1920, 1080), NewPos, NewSize);
+	}
+#endif
 }
 
 
@@ -281,6 +296,3 @@ void UGuideLayerBase::OnResizedViewport(FViewport* InViewport, uint32 InMessage)
 		SetGuide(GuideWidget.Get());
 	}
 }
-
-
-
