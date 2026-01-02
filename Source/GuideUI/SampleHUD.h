@@ -72,11 +72,15 @@ private:
 	UFUNCTION()
 	void OnChangedHoldTime(float InValue);
 
-	UFUNCTION()
-	bool OnGetListItem(UObject* InItem);
 
+	// Sample
 	UFUNCTION()
-	bool OnGetDynamicEntry(UObject* InEntry) { return true; } 
+	bool OnGetListItem(EGuideWidgetPredTarget InTarget, UObject* InItem);
+
+
+	// Sample
+	UFUNCTION()
+	bool OnGetDynamicEntry(EGuideWidgetPredTarget InTarget, UObject* InEntry) { return true; }
 
 
 private:

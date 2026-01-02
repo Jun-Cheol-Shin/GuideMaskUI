@@ -37,6 +37,11 @@ public class GuideMaskUIEditor : ModuleRules
 				"CoreUObject",
 				"Engine",
 				"GuideMaskUI",
+                "DetailCustomizations",
+                "PropertyEditor",
+				"Slate",
+				"SlateCore",
+				"UMG"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);

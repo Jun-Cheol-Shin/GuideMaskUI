@@ -84,9 +84,9 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 	FGuideDynamicWidgetPath CurrentPath = InPath[0];
 	if (UListView* ListView = Cast<UListView>(InWidget))
 	{
-		UObject* const* ListItem = ListView->GetListItems().FindByPredicate([Event = CurrentPath.OnGetDynamicEvent](UObject* InItem) -> bool
+		UObject* const* ListItem = ListView->GetListItems().FindByPredicate([Event = CurrentPath.Predicate](UObject* InItem) -> bool
 			{
-				return true == Event.IsBound() ? Event.Execute(InItem) : false;
+				return true == Event.IsBound() ? Event.Execute(EGuideWidgetPredTarget::ListItem, InItem) : false;
 			});
 
 		if (ListItem && *ListItem)
@@ -98,7 +98,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 					InAsyncTimeout))
 			{
 				AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
-					[NewPath, ChildIndex = CurrentPath.NextSearchChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](const UObject* InWorldContextObject, UUserWidget* InEntryWidget)
+					[NewPath, ChildIndex = CurrentPath.NextChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](const UObject* InWorldContextObject, UUserWidget* InEntryWidget)
 					{
 						if (nullptr == InEntryWidget)
 						{
@@ -140,9 +140,9 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 
 	else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(InWidget))
 	{
-		UUserWidget* const* Entry = EntryBox->GetAllEntries().FindByPredicate([Event = CurrentPath.OnGetDynamicEvent](UUserWidget* InEntry)
+		UUserWidget* const* Entry = EntryBox->GetAllEntries().FindByPredicate([Event = CurrentPath.Predicate](UUserWidget* InEntry)
 			{
-				return true == Event.IsBound() ? Event.Execute(InEntry) : false;
+				return true == Event.IsBound() ? Event.Execute(EGuideWidgetPredTarget::EntryWidget, InEntry) : false;
 			});
 
 		UUserWidget* EntryPtr = Entry && *Entry ? *Entry : nullptr;
@@ -160,14 +160,14 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 				Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
 			}
 
-			if (false == Childs.IsValidIndex(CurrentPath.NextSearchChildIndex))
+			if (false == Childs.IsValidIndex(CurrentPath.NextChildIndex))
 			{
 				ShowGuideWidget(WorldContextObject, EntryPtr, InActionParam, InLayerZOrder);
 			}
 
 			else
 			{
-				ShowGuideDynamicWidget(WorldContextObject, Childs[CurrentPath.NextSearchChildIndex], NewPath, InActionParam, InLayerZOrder, InAsyncTimeout);
+				ShowGuideDynamicWidget(WorldContextObject, Childs[CurrentPath.NextChildIndex], NewPath, InActionParam, InLayerZOrder, InAsyncTimeout);
 			}
 		}
 

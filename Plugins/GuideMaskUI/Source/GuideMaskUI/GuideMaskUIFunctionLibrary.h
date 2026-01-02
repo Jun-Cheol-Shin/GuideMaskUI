@@ -11,7 +11,15 @@
 #include "GuideMaskUIFunctionLibrary.generated.h"
 
 
-DECLARE_DYNAMIC_DELEGATE_RetVal_OneParam(bool, FOnGetDynamicEntryDynamicEvent, UObject*, InEntryItem);
+UENUM(BlueprintType)
+enum class EGuideWidgetPredTarget : uint8
+{
+	ListItem		UMETA(DisplayName = "List Item (UObject)"),
+	EntryWidget		UMETA(DisplayName = "Dynamic Entry Widget (UUserWidget)"),
+
+};
+
+DECLARE_DYNAMIC_DELEGATE_RetVal_TwoParams(bool, FOnGetDynamicEntryDynamicEvent, EGuideWidgetPredTarget, InPredTarget, UObject*, InEntryItem);
 
 
 USTRUCT(BlueprintType)
@@ -21,10 +29,10 @@ struct FGuideDynamicWidgetPath
 
 public:
 	UPROPERTY(EditAnywhere)
-	FOnGetDynamicEntryDynamicEvent OnGetDynamicEvent;
+	FOnGetDynamicEntryDynamicEvent Predicate;
 
 	UPROPERTY(EditAnywhere)
-	int NextSearchChildIndex = -1;
+	int NextChildIndex = -1;
 };
 
 

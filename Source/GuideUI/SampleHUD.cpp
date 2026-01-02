@@ -35,7 +35,7 @@ TArray<FGuideDynamicWidgetPath> USampleHUD::GetDynamicPath() const
 		return RetVal;
 	}
 
-	TArray<FGuideTreeNode> NewTree;
+	TArray<FGuideHierarchyNode> NewTree;
 	Register->GetGuideWidgetTree(OUT NewTree, SelectedTag);
 
 	int ScopeIndex = ScopeWidgetComboBox->GetSelectedIndex();
@@ -50,12 +50,12 @@ TArray<FGuideDynamicWidgetPath> USampleHUD::GetDynamicPath() const
 			return RetVal;
 		}
 
-		FGuideTreeNode Node = NewTree[i];
+		FGuideHierarchyNode Node = NewTree[i];
 		FGuideDynamicWidgetPath NewPath;
 
 		if (nullptr != TempScope)
 		{
-			NewPath.NextSearchChildIndex = Node.NestedWidgets.IndexOfByPredicate([&TempScope](UWidget* InWidget)
+			NewPath.NextChildIndex = Node.Children.IndexOfByPredicate([&TempScope](UWidget* InWidget)
 				{
 					return InWidget == TempScope;
 				});
@@ -63,23 +63,23 @@ TArray<FGuideDynamicWidgetPath> USampleHUD::GetDynamicPath() const
 
 		else
 		{
-			NewPath.NextSearchChildIndex = NestedIndex;
+			NewPath.NextChildIndex = NestedIndex;
 		}
 
 
-		if (UListView* ListView = Cast<UListView>(Node.Scope))
+		if (UListView* ListView = Cast<UListView>(Node.Container))
 		{
-			NewPath.OnGetDynamicEvent.BindDynamic(this, &USampleHUD::OnGetListItem);
+			NewPath.Predicate.BindDynamic(this, &USampleHUD::OnGetListItem);
 			RetVal.Emplace(NewPath);
 		}
 
-		else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(Node.Scope))
+		else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(Node.Container))
 		{
-			NewPath.OnGetDynamicEvent.BindDynamic(this, &USampleHUD::OnGetDynamicEntry);
+			NewPath.Predicate.BindDynamic(this, &USampleHUD::OnGetDynamicEntry);
 			RetVal.Emplace(NewPath);
 		}
 
-		TempScope = Node.Scope;
+		TempScope = Node.Container;
 	}
 
 	if (false == RetVal.IsEmpty())
@@ -191,7 +191,7 @@ void USampleHUD::OnTagSelectionChanged(FString InSelectedItem, ESelectInfo::Type
 			return;
 		}
 
-		TArray<FGuideTreeNode> NewTree;
+		TArray<FGuideHierarchyNode> NewTree;
 		Register->GetGuideWidgetTree(NewTree, FName(InSelectedItem));
 
 		for (int i = 0; i < NewTree.Num(); ++i)
@@ -201,12 +201,12 @@ void USampleHUD::OnTagSelectionChanged(FString InSelectedItem, ESelectInfo::Type
 				continue;
 			}
 
-			if (nullptr == NewTree[i].Scope)
+			if (nullptr == NewTree[i].Container)
 			{
 				continue;
 			}
 
-			ScopeWidgetComboBox->AddOption(NewTree[i].Scope->GetName());
+			ScopeWidgetComboBox->AddOption(NewTree[i].Container->GetName());
 		}
 
 		ScopeWidgetComboBox->SetSelectedIndex(0);
@@ -232,16 +232,16 @@ void USampleHUD::OnScopeWidgetSelectionChanged(FString InSelectedItem, ESelectIn
 		return;
 	}
 
-	TArray<FGuideTreeNode> NewTree;
+	TArray<FGuideHierarchyNode> NewTree;
 	Register->GetGuideWidgetTree(NewTree, FName(TagComboBox->GetSelectedOption()));
 
 	if (NewTree.IsValidIndex(ScopeIndex))
 	{
-		FGuideTreeNode SelectedNode = NewTree[ScopeIndex];
+		FGuideHierarchyNode SelectedNode = NewTree[ScopeIndex];
 
-		for (int i = 0; i < SelectedNode.NestedWidgets.Num(); ++i)
+		for (int i = 0; i < SelectedNode.Children.Num(); ++i)
 		{
-			UWidget* ChildWidget = SelectedNode.NestedWidgets[i];
+			UWidget* ChildWidget = SelectedNode.Children[i];
 			if (nullptr == ChildWidget)
 			{
 				continue;
@@ -356,11 +356,14 @@ void USampleHUD::OnChangedHoldTime(float InValue)
 	HoldTime = InValue;
 }
 
-bool USampleHUD::OnGetListItem(UObject* InItem)
+bool USampleHUD::OnGetListItem(EGuideWidgetPredTarget InTarget, UObject* InItem)
 {
-	if (USampleListItem* ListItem = Cast<USampleListItem>(InItem))
+	if (EGuideWidgetPredTarget::ListItem == InTarget)
 	{
-		return ListItem->ItemId == 10;
+		if (USampleListItem* ListItem = Cast<USampleListItem>(InItem))
+		{
+			return ListItem->ItemId == 10;
+		}
 	}
 
 	return false;
