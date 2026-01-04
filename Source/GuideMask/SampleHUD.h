@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "GuideMaskUI/UI/GuideBoxBase.h"
+#include "GuideMaskUI/GuideMaskUIFunctionLibrary.h"
 #include "SampleHUD.generated.h"
 
 
@@ -14,10 +15,9 @@ class UButton;
 class UTextBlock;
 class USpinBox;
 
-struct FGuideDynamicWidgetPath;
 
 UCLASS()
-class GUIDEUI_API USampleHUD : public UUserWidget
+class GUIDEMASK_API USampleHUD : public UUserWidget
 {
 	GENERATED_BODY()
 

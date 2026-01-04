@@ -71,7 +71,7 @@ FReply UGuideLayerBase::OnTouchEnded(const FGeometry& InGeometry, const FPointer
 	return FReply::Handled();
 }
 
-void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParam)
+void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParameter)
 {
 	if (nullptr == InWidget)
 	{
@@ -82,9 +82,10 @@ void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameter
 	FGeometry ViewportGeo = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
 	SetGuideInternal(ViewportGeo, InWidget);
 
-	if (nullptr != BoxBaseWidget && InParam.ActionType != EGuideActionType::None_Action)
+	if (nullptr != BoxBaseWidget && InParameter.ActionType != EGuideActionType::None_Action)
 	{
-		BoxBaseWidget->SetGuideWidget(InWidget, InParam);
+		BoxBaseWidget->SetGuideWidget(InWidget);
+		BoxBaseWidget->SetGuideAction(InParameter);
 
 		if (nullptr != GuideBoxPanel)
 		{
@@ -100,7 +101,7 @@ void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameter
 		}
 	}
 
-	OnStartGuide(InWidget, InParam);
+	OnStartGuide(InWidget, InParameter);
 }
 
 void UGuideLayerBase::SetGuideInternal(const FGeometry& InViewportGeometry, UWidget* InWidget)
@@ -191,7 +192,8 @@ void UGuideLayerBase::SetBoxOffset(const FMargin& InMargin)
 
 	if (true == GuideWidget.IsValid())
 	{
-		SetGuide(GuideWidget.Get());
+		FGeometry ViewportGeo = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
+		SetGuideInternal(ViewportGeo, GuideWidget.Get());
 	}
 }
 
@@ -315,6 +317,7 @@ void UGuideLayerBase::OnResizedViewport(FViewport* InViewport, uint32 InMessage)
 {
 	if (true == GuideWidget.IsValid())
 	{
-		SetGuide(GuideWidget.Get());
+		FGeometry ViewportGeo = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
+		SetGuideInternal(ViewportGeo, GuideWidget.Get());
 	}
 }

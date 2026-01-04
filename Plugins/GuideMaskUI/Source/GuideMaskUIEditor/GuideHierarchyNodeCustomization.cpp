@@ -13,6 +13,8 @@
 
 #include "GuideMaskUI/UI/GuideMaskRegister.h"
 
+#include "Runtime/Launch/Resources/Version.h"
+
 TSharedRef<IPropertyTypeCustomization> FGuideHierarchyNodeCustomization::MakeInstance()
 {
     return MakeShareable(new FGuideHierarchyNodeCustomization);
@@ -61,9 +63,13 @@ void FGuideHierarchyNodeCustomization::CustomizeHeader(TSharedRef<IPropertyHandl
                                         *WidgetName, *EntryClassName));
                                 })
                     ]
-            ]
-        .ShouldAutoExpand(true);
+#if ENGINE_MAJOR_VERSION < 5
+            ];
+#else
+        ].ShouldAutoExpand(true);
+#endif
     }
+
     else
     {
         HeaderRow

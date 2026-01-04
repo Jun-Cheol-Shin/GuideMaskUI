@@ -4,15 +4,17 @@
 
 #include "CoreMinimal.h"
 #include "Kismet/BlueprintAsyncActionBase.h"
+#include "Runtime/Launch/Resources/Version.h"
+
 #include "GuideListEntryAsyncAction.generated.h"
 
 class UListView;
 class UUserWidget;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnListEntryReadyEvent, const UObject*, InWorldContextObject, UUserWidget*, EntryWidget);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnListEntryReadyEvent, UObject*, InWorldContextObject, UUserWidget*, EntryWidget);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnListEntryFailedEvent);
 
-DECLARE_MULTICAST_DELEGATE_TwoParams(FOnListEntryReadyNativeEvent, const UObject*, UUserWidget*);
+DECLARE_MULTICAST_DELEGATE_TwoParams(FOnListEntryReadyNativeEvent, UObject*, UUserWidget*);
 DECLARE_MULTICAST_DELEGATE(FOnListEntryFailedNativeEvent);
 
 UCLASS()
@@ -51,20 +53,24 @@ private:
 	
 private:
 	UPROPERTY()
-	TObjectPtr<UObject> WorldContext;
+	UObject* WorldContext;
 
 	UPROPERTY()
-	TObjectPtr<UListView> ListViewPtr;
+	UListView* ListViewPtr;
 
 	UPROPERTY()
-	TObjectPtr<UObject> ItemPtr;
+	UObject* ItemPtr;
 
 	bool bFindEntry = false;
 
+#if ENGINE_MAJOR_VERSION >= 5
 	FTSTicker::FDelegateHandle TickerHandle;
+#else
+	FDelegateHandle TickerHandle;
+#endif
+
+
 	double StartTime = 0.0;
 	float Timeout = 3.f;
 
-
-	//bool bDoScroll = true;
 };

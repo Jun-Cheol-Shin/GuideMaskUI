@@ -20,7 +20,7 @@ public:
 };
 
 UCLASS()
-class GUIDEUI_API USampleListEntry : public UUserWidget, public IUserObjectListEntry
+class GUIDEMASK_API USampleListEntry : public UUserWidget, public IUserObjectListEntry
 {
 	GENERATED_BODY()
 	

@@ -17,6 +17,7 @@
 #include "GuideMaskUI/UI/GuideMaskRegister.h"
 #include "GuideMaskUI/GuideMaskUIFunctionLibrary.h"
 
+#include "Runtime/Launch/Resources/Version.h"
 
 TArray<FGuideDynamicWidgetPath> USampleHUD::GetDynamicPath() const
 {
@@ -82,7 +83,7 @@ TArray<FGuideDynamicWidgetPath> USampleHUD::GetDynamicPath() const
 		TempScope = Node.Container;
 	}
 
-	if (false == RetVal.IsEmpty())
+	if (0 < RetVal.Num())
 	{
 		Algo::Reverse(RetVal);
 	}
@@ -289,10 +290,17 @@ void USampleHUD::OnActionTypeSelectionChanged(FString InSelectedItem, ESelectInf
 					continue;
 				}
 
+#if ENGINE_MAJOR_VERSION >= 5
 				if (Key.IsDeprecated() || Key.IsVirtual() || Key.IsTouch())
 				{
 					continue;
 				}
+#else 
+				if (Key.IsDeprecated() || Key.IsTouch())
+				{
+					continue;
+				}
+#endif 
 
 				if (!Key.IsBindableInBlueprints())
 				{

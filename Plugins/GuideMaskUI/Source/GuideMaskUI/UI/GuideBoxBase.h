@@ -53,6 +53,8 @@ struct FGuideBoxActionParameters
 	GENERATED_BODY()
 
 public:
+	FGuideBoxActionParameters() = default;
+public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	EGuideActionType ActionType = EGuideActionType::None_Action;
 
@@ -77,7 +79,7 @@ class GUIDEMASKUI_API UGuideBoxBase : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
-	void SetGuideWidget(UWidget* InWidget, const FGuideBoxActionParameters& InActionParam = FGuideBoxActionParameters());
+	void SetGuideWidget(UWidget* InWidget);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	void SetGuideAction(const FGuideBoxActionParameters& InActionParam);
@@ -86,7 +88,7 @@ public:
 	EGuideActionType GetActionType() const { return ActionParam.ActionType; }
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
-	double GetCurrentHoldSeconds() const { return ActionParam.HoldSeconds; }
+	float GetCurrentHoldSeconds() const { return ActionParam.HoldSeconds; }
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	FKey GetCurrentActionKey() const { return ActionParam.ActivationKey; }

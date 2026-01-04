@@ -10,7 +10,7 @@
  * 
  */
 UCLASS()
-class GUIDEUI_API USampleDynamicEntry : public UUserWidget
+class GUIDEMASK_API USampleDynamicEntry : public UUserWidget
 {
 	GENERATED_BODY()
 	

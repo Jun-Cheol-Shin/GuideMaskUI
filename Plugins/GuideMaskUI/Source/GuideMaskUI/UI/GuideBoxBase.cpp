@@ -2,14 +2,16 @@
 
 
 #include "GuideBoxBase.h"
-
-//#include "Components/ProgressBar.h"
 #include "Components/Button.h"
 #include "Components/CheckBox.h"
+//#include "Components/ProgressBar.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
 
-void UGuideBoxBase::SetGuideWidget(UWidget* InWidget, const FGuideBoxActionParameters& InActionParam)
+#include "Runtime/Launch/Resources/Version.h"
+
+
+void UGuideBoxBase::SetGuideWidget(UWidget* InWidget)
 {
 	ActionWidget = InWidget;
 
@@ -19,7 +21,7 @@ void UGuideBoxBase::SetGuideWidget(UWidget* InWidget, const FGuideBoxActionParam
 		HoldProgressBar->SetPercent(0.f);
 	}*/
 
-	SetGuideAction(InActionParam);
+	//SetGuideAction(InActionParam);
 }
 
 void UGuideBoxBase::SetGuideAction(const FGuideBoxActionParameters& InActionParam)
@@ -54,8 +56,14 @@ FReply UGuideBoxBase::NativeOnStartClickAction(const FGeometry& InGeometry, cons
 	{
 		if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
 		{
+
+#if ENGINE_MAJOR_VERSION >= 5
 			CachedClickMethod = ButtonWidget->GetClickMethod();
 			CachedTouchMethod = ButtonWidget->GetTouchMethod();
+#else
+			CachedClickMethod = ButtonWidget->ClickMethod;
+			CachedTouchMethod = ButtonWidget->TouchMethod;
+#endif
 
 			ButtonWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
 			ButtonWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
@@ -72,8 +80,14 @@ FReply UGuideBoxBase::NativeOnStartClickAction(const FGeometry& InGeometry, cons
 
 		else if (UCheckBox* CheckBoxWidget = Cast<UCheckBox>(ActionWidget))
 		{
+
+#if ENGINE_MAJOR_VERSION >= 5
 			CachedClickMethod = CheckBoxWidget->GetClickMethod();
 			CachedTouchMethod = CheckBoxWidget->GetTouchMethod();
+#else
+			CachedClickMethod = CheckBoxWidget->ClickMethod;
+			CachedTouchMethod = CheckBoxWidget->TouchMethod;
+#endif
 
 			CheckBoxWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
 			CheckBoxWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
@@ -185,7 +199,11 @@ FReply UGuideBoxBase::NativeOnMoveAction(const FGeometry& InGeometry, const FPoi
 
 		else
 		{
+#if ENGINE_MAJOR_VERSION >= 5
 			TouchStartPos = FVector2D::Zero();
+#else
+			TouchStartPos = FVector2D::ZeroVector;
+#endif
 		}
 	}
 	break;
@@ -305,10 +323,18 @@ FReply UGuideBoxBase::NativeOnEndKeyAction(const FGeometry& InGeometry, const FK
 
 void UGuideBoxBase::NativeOnEndAction(const FPointerEvent& InEvent)
 {
+
+#if ENGINE_MAJOR_VERSION >= 5
 	if (false == InEvent.GetPressedButtons().IsEmpty())
 	{
 		NativeOnMouseLeave(InEvent);
 	}
+#else
+	if (0 >= InEvent.GetPressedButtons().Num())
+	{
+		NativeOnMouseLeave(InEvent);
+	}
+#endif
 
 	if (ActionParam.WidgetActionEvent.IsBound())
 	{
@@ -331,7 +357,12 @@ void UGuideBoxBase::NativeConstruct()
 	OnNativeVisibilityChanged.RemoveAll(this);
 	OnNativeVisibilityChanged.AddUObject(this, &UGuideBoxBase::OnChangedVisibility);
 
+#if ENGINE_MAJOR_VERSION >= 5
 	SetIsFocusable(true);
+#else
+	bIsFocusable = true;
+#endif
+
 }
 
 void UGuideBoxBase::NativeDestruct()
@@ -388,10 +419,18 @@ FReply UGuideBoxBase::NativeOnMouseButtonDown(const FGeometry& InGeometry, const
 
 FReply UGuideBoxBase::NativeOnMouseMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
+
+#if ENGINE_MAJOR_VERSION >= 5
 	if (true == TouchStartPos.IsZero())
 	{
 		return FReply::Unhandled();
 	}
+#else
+	if (FVector2D::ZeroVector == TouchStartPos)
+	{
+		return FReply::Unhandled();
+	}
+#endif
 
 	switch (ActionParam.ActionType)
 	{
@@ -420,7 +459,13 @@ FReply UGuideBoxBase::NativeOnMouseButtonUp(const FGeometry& InGeometry, const F
 
 	if (false == TouchStartPos.IsZero())
 	{
+
+#if ENGINE_MAJOR_VERSION >= 5
 		TouchStartPos = FVector2D::Zero();
+#else
+		TouchStartPos = FVector2D::ZeroVector;
+#endif
+
 		StartTime = 0.f;
 
 		switch (ActionParam.ActionType)
@@ -462,10 +507,18 @@ FReply UGuideBoxBase::NativeOnTouchStarted(const FGeometry& InGeometry, const FP
 
 FReply UGuideBoxBase::NativeOnTouchMoved(const FGeometry& InGeometry, const FPointerEvent& InGestureEvent)
 {
+
+#if ENGINE_MAJOR_VERSION >= 5
 	if (true == TouchStartPos.IsZero())
 	{
 		return FReply::Unhandled();
 	}
+#else
+	if (FVector2D::ZeroVector == TouchStartPos)
+	{
+		return FReply::Unhandled();
+	}
+#endif
 
 	switch (ActionParam.ActionType)
 	{
@@ -492,9 +545,18 @@ FReply UGuideBoxBase::NativeOnTouchEnded(const FGeometry& InGeometry, const FPoi
 		HoldProgressBar->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 	}*/
 
+#if ENGINE_MAJOR_VERSION >= 5
 	if (false == TouchStartPos.IsZero())
+#else
+	if (FVector2D::ZeroVector == TouchStartPos)
+#endif
 	{
+
+#if ENGINE_MAJOR_VERSION >= 5
 		TouchStartPos = FVector2D::Zero();
+#else
+		TouchStartPos = FVector2D::ZeroVector;
+#endif
 		StartTime = 0.f;
 
 		switch (ActionParam.ActionType)
@@ -545,13 +607,23 @@ FReply UGuideBoxBase::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent
 		HoldProgressBar->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 	}*/
 
+#if ENGINE_MAJOR_VERSION >= 5
 	if (EGuideActionType::Hold == ActionParam.ActionType && false == TouchStartPos.IsZero())
+#else
+	if (EGuideActionType::Hold == ActionParam.ActionType && FVector2D::ZeroVector == TouchStartPos)
+#endif
 	{
 		StartTime = 0.f;
+
+#if ENGINE_MAJOR_VERSION >= 5
 		TouchStartPos = FVector2D::Zero();
+#else
+		TouchStartPos = FVector2D::ZeroVector;
+#endif
 
 		return FReply::Handled();
 	}
+
 
 	else if (InKeyEvent.GetKey() == ActionParam.ActivationKey)
 	{
@@ -604,7 +676,11 @@ void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 
 	if (false == IsDragType(ActionParam.ActionType))
 	{
+#if ENGINE_MAJOR_VERSION >= 5
 		TouchStartPos = FVector2D::Zero();
+#else
+		TouchStartPos = FVector2D::ZeroVector;
+#endif
 	}
 
 	if (EGuideActionType::Hold != ActionParam.ActionType)
@@ -616,7 +692,13 @@ void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 void UGuideBoxBase::Clear()
 {
 	StartTime = 0.f;
+
+#if ENGINE_MAJOR_VERSION >= 5
 	TouchStartPos = FVector2D::Zero();
+#else
+	TouchStartPos = FVector2D::ZeroVector;
+#endif
+
 	ActionWidget.Reset();
 
 	ActionParam.WidgetActionEvent.Clear();

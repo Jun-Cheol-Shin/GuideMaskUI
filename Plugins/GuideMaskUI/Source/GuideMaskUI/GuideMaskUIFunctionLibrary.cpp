@@ -15,7 +15,9 @@
 #include "Components/ListView.h"
 #include "Components/DynamicEntryBox.h"
 
-void UGuideMaskUIFunctionLibrary::ShowGuideWidget(const UObject* WorldContextObject, UWidget* InTagWidget, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
+//#include "UObject/UObjectGlobals.h"
+
+void UGuideMaskUIFunctionLibrary::ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
 {
 	if (nullptr == WorldContextObject)
 	{
@@ -37,7 +39,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideWidget(const UObject* WorldContextObj
 	}
 }
 
-void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(const UObject* WorldContextObject, UListView* InTagListView, UObject* InListItem, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
+void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(UObject* WorldContextObject, UListView* InTagListView, UObject* InListItem, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
 {
 	if (nullptr == WorldContextObject)
 	{
@@ -51,7 +53,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(const UObject* WorldContext
 			InAsyncTimeout))
 	{
 		AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
-			[InActionParam, InLayerZOrder](const UObject* InWorldContextObject, UUserWidget* InEntryWidget)
+			[InActionParam, InLayerZOrder](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
 			{
 				UGuideMaskUIFunctionLibrary::ShowGuideWidget(InWorldContextObject, InEntryWidget, InActionParam, InLayerZOrder);
 			});
@@ -62,18 +64,26 @@ void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(const UObject* WorldContext
 }
 
 
-void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldContextObject, UWidget* InWidget, const TArray<FGuideDynamicWidgetPath>& InPath, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
+void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextObject, UWidget* InWidget, const TArray<FGuideDynamicWidgetPath>& InPath, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
 {
 	if (nullptr == WorldContextObject)
 	{
 		return;
 	}
 
+#if ENGINE_MAJOR_VERSION >= 5
 	if (true == InPath.IsEmpty())
 	{
 		ShowGuideWidget(WorldContextObject, InWidget, InActionParam, InLayerZOrder);
 		return;
 	}
+#else
+	if (0 >= InPath.Num())
+	{
+		ShowGuideWidget(WorldContextObject, InWidget, InActionParam, InLayerZOrder);
+		return;
+	}
+#endif
 
 	TArray<FGuideDynamicWidgetPath> NewPath;
 	for (int i = 1; i < InPath.Num(); ++i)
@@ -98,7 +108,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 					InAsyncTimeout))
 			{
 				AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
-					[NewPath, ChildIndex = CurrentPath.NextChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](const UObject* InWorldContextObject, UUserWidget* InEntryWidget)
+					[NewPath, ChildIndex = CurrentPath.NextChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
 					{
 						if (nullptr == InEntryWidget)
 						{
@@ -183,7 +193,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(const UObject* WorldCon
 	}
 }
 
-void UGuideMaskUIFunctionLibrary::GetAllGuideRegisters(const UObject* WorldContextObject, TArray<UGuideMaskRegister*>& FoundWidgets)
+void UGuideMaskUIFunctionLibrary::GetAllGuideRegisters(UObject* WorldContextObject, TArray<UGuideMaskRegister*>& FoundWidgets)
 {
 	FoundWidgets.Empty();
 
@@ -212,7 +222,7 @@ void UGuideMaskUIFunctionLibrary::GetAllGuideRegisters(const UObject* WorldConte
 	}
 }
 
-UWidget* UGuideMaskUIFunctionLibrary::GetTagWidget(const UObject* WorldContextObject, const FName& InTag)
+UWidget* UGuideMaskUIFunctionLibrary::GetTagWidget(UObject* WorldContextObject, const FName& InTag)
 {
 	if (UGuideMaskRegister* Register = GetRegister(WorldContextObject, InTag))
 	{
@@ -222,7 +232,7 @@ UWidget* UGuideMaskUIFunctionLibrary::GetTagWidget(const UObject* WorldContextOb
 	return nullptr;
 }
 
-UGuideMaskRegister* UGuideMaskUIFunctionLibrary::GetRegister(const UObject* WorldContextObject, const FName& InTag)
+UGuideMaskRegister* UGuideMaskUIFunctionLibrary::GetRegister(UObject* WorldContextObject, const FName& InTag)
 {
 	TArray<UGuideMaskRegister*> Widgets;
 	GetAllGuideRegisters(WorldContextObject, OUT Widgets);

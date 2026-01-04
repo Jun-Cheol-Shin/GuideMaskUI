@@ -2,9 +2,9 @@
 
 using UnrealBuildTool;
 
-public class GuideUI : ModuleRules
+public class GuideMask : ModuleRules
 {
-	public GuideUI(ReadOnlyTargetRules Target) : base(Target)
+	public GuideMask(ReadOnlyTargetRules Target) : base(Target)
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
@@ -12,13 +12,13 @@ public class GuideUI : ModuleRules
 			"Core", 
 			"CoreUObject", 
 			"Engine", 
-			"InputCore", 
-			"EnhancedInput", 
-			"GuideMaskUI",  
-			"Slate", 
-			"SlateCore" });
+			"InputCore",
+			"GuideMaskUI",
+			"Slate",
+            "SlateCore",
+			"UMG"});
 
-		PrivateDependencyModuleNames.AddRange(new string[] { });
+		PrivateDependencyModuleNames.AddRange(new string[] {  });
 
 		// Uncomment if you are using Slate UI
 		// PrivateDependencyModuleNames.AddRange(new string[] { "Slate", "SlateCore" });

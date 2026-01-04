@@ -21,7 +21,7 @@ class GUIDEMASKUI_API UGuideLayerBase : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
-	void SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParam = FGuideBoxActionParameters());
+	void SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParameter);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic)
 	void SetEnableAnim(bool bIsEnable);
@@ -113,10 +113,10 @@ protected:
 
 protected:
 	UPROPERTY()
-	TObjectPtr<UMaterialInstanceDynamic> MaterialInstance = nullptr;	
+	UMaterialInstanceDynamic* MaterialInstance = nullptr;
 
 	UPROPERTY(Transient)
-	TObjectPtr<UGuideBoxBase> BoxBaseWidget = nullptr;
+	UGuideBoxBase* BoxBaseWidget = nullptr;
 
 	TWeakObjectPtr<UWidget> GuideWidget = nullptr;
 };

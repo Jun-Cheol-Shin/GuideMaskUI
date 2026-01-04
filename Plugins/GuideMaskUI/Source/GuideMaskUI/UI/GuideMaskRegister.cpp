@@ -13,6 +13,8 @@
 #include "../EntryGuideIdentifiable.h"
 #include "../GuideMaskUIFunctionLibrary.h"
 
+#include "Runtime/Launch/Resources/Version.h"
+
 #define LOCTEXT_NAMESPACE "GuideMaskRegister"
 
 #if WITH_EDITOR
@@ -135,12 +137,20 @@ void UGuideMaskRegister::CreatePreviewLayer(const FGeometry& InViewportGeometry)
 
 		if (UListViewBase* ListView = Cast<UListViewBase>(Target))
 		{
+#if ENGINE_MAJOR_VERSION >= 5
 			TargetWidget = false == ListView->GetDisplayedEntryWidgets().IsEmpty() ? *ListView->GetDisplayedEntryWidgets().begin() : nullptr;
+#else
+			TargetWidget = 0 < ListView->GetDisplayedEntryWidgets().Num() ? *ListView->GetDisplayedEntryWidgets().begin() : nullptr;
+#endif
 		}
 
 		else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(Target))
 		{
+#if ENGINE_MAJOR_VERSION >= 5
 			TargetWidget = false == EntryBox->GetAllEntries().IsEmpty() ? *EntryBox->GetAllEntries().begin() : nullptr;
+#else
+			TargetWidget = 0 < EntryBox->GetAllEntries().Num() ? *EntryBox->GetAllEntries().begin() : nullptr;
+#endif
 		}
 
 		Layer->SetPreviewGuide(InViewportGeometry, nullptr != TargetWidget ? TargetWidget : Target);
@@ -152,10 +162,17 @@ TArray<FName> UGuideMaskRegister::GetTagOptions() const
 {
 	TArray<FName> TagList;
 
+#if ENGINE_MAJOR_VERSION >= 5
 	Algo::Transform(TagWidgetList, TagList, [](const TPair<FName, UWidget*>& InEntry) -> FName
 		{
 			return InEntry.Key;
 		});
+#else 
+	for (auto& TagWidget : TagWidgetList)
+	{
+		TagList.Emplace(TagWidget.Key);
+	}
+#endif
 
 	return TagList;
 }
@@ -194,7 +211,11 @@ TArray<FName> UGuideMaskRegister::GetNestedWidgetOptions() const
 		}
 	}
 
+#if ENGINE_MAJOR_VERSION >= 5
 	if (true == NameList.IsEmpty() && nullptr != TagWidget)
+#else
+	if (0 >= NameList.Num() && nullptr != TagWidget)
+#endif
 	{
 		NameList.Emplace(TagWidget->GetFName());
 	}
@@ -244,8 +265,11 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 	}
 
 
-	for (auto& [Tag, Widget] : TagWidgetList)
+	for (auto& Pair : TagWidgetList)
 	{
+		FName Tag = Pair.Key;
+		UWidget* Widget = Pair.Value;
+
 		if (UListViewBase* ListView = Cast<UListViewBase>(Widget))
 		{
 			UClass* WidgetClass = ListView->GetEntryWidgetClass();
@@ -305,7 +329,11 @@ void UGuideMaskRegister::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 	{
 		TArray<FName> NestedWidgetList = GetNestedWidgetOptions();
 
+#if ENGINE_MAJOR_VERSION >= 5
 		PreviewWidget = false == NestedWidgetList.IsEmpty() ? *NestedWidgetList.begin() : FName();
+#else
+		PreviewWidget = 0 < NestedWidgetList.Num() ? *NestedWidgetList.begin() : FName();
+#endif
 	}
 
 	else if (PropertyName == GET_MEMBER_NAME_CHECKED(UGuideMaskRegister, TagWidgetList))
@@ -314,10 +342,19 @@ void UGuideMaskRegister::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 
 		if (false == TagList.Contains(PreviewTag))
 		{
+#if ENGINE_MAJOR_VERSION >= 5
 			PreviewTag = false == TagList.IsEmpty() ? *TagList.begin() : FName();
+#else
+			PreviewTag = 0 < TagList.Num() ? *TagList.begin() : FName();
+#endif
 
 			TArray<FName> WidgetList = GetNestedWidgetOptions();
+
+#if ENGINE_MAJOR_VERSION >= 5
 			PreviewWidget = false == WidgetList.IsEmpty() ? *WidgetList.begin() : FName();
+#else
+			PreviewWidget = 0 < WidgetList.Num() ? *WidgetList.begin() : FName();
+#endif
 		}
 	}
 }
@@ -350,7 +387,11 @@ void UGuideMaskRegister::ConstructWidgetTree(OUT TArray<FGuideHierarchyNode>& Ou
 
 
 	UUserWidget* Entry = 
+#if ENGINE_MAJOR_VERSION >= 5
 		true == EntryList.IsEmpty() ?
+#else
+		0 >= EntryList.Num() ?
+#endif
 		nullptr != EntryClass ? 
 		CreateWidget<UUserWidget>(GetWorld(), EntryClass) : nullptr : *EntryList.begin();
 
@@ -524,7 +565,6 @@ void UGuideMaskRegister::SynchronizeProperties()
 	Super::SynchronizeProperties();
 
 #if WITH_EDITOR
-
 	if (IsDesignTime())
 	{
 		bool bRemove = false;
@@ -533,8 +573,11 @@ void UGuideMaskRegister::SynchronizeProperties()
 		{
 			TArray<FName> RemovedTag;
 
-			for (auto& [Tag, Widget] : TagWidgetList)
+			for (auto& Pair : TagWidgetList)
 			{
+				FName Tag = Pair.Key;
+				UWidget* Widget = Pair.Value;
+
 				if (nullptr == Widget)
 				{
 					continue;
@@ -559,10 +602,20 @@ void UGuideMaskRegister::SynchronizeProperties()
 		if (true == bRemove)
 		{
 			TArray<FName> TagList = GetTagOptions();
+
+#if ENGINE_MAJOR_VERSION >= 5
 			PreviewTag = false == TagList.IsEmpty() ? *TagList.begin() : FName();
+#else
+			PreviewTag = 0 < TagList.Num() ? *TagList.begin() : FName();
+#endif
 
 			TArray<FName> WidgetList = GetNestedWidgetOptions();
+
+#if ENGINE_MAJOR_VERSION >= 5
 			PreviewWidget = false == WidgetList.IsEmpty() ? *WidgetList.begin() : FName();
+#else
+			PreviewWidget = 0 < WidgetList.Num() ? *WidgetList.begin() : FName();
+#endif
 		} 
 
 		WidgetHierarchy.Reset();

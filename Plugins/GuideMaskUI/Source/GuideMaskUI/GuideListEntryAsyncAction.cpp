@@ -2,9 +2,9 @@
 
 
 #include "GuideListEntryAsyncAction.h"
-
 #include "Components/ListView.h"
 #include "Components/TreeView.h"
+
 
 UGuideListEntryAsyncAction* UGuideListEntryAsyncAction::Create(UObject* InWorldContextObject, UListView* InListView, UObject* InListItem, float InTimeout)
 {
@@ -46,9 +46,17 @@ void UGuideListEntryAsyncAction::Activate()
 			ListViewPtr->ScrollIndexIntoView(Index);
 
 			StartTime = FPlatformTime::Seconds();
+
+#if ENGINE_MAJOR_VERSION >= 5
 			FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
 			TickerHandle = FTSTicker::GetCoreTicker().AddTicker(
 				FTickerDelegate::CreateUObject(this, &UGuideListEntryAsyncAction::Tick));
+#else
+			FTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+			TickerHandle = FTicker::GetCoreTicker().AddTicker(
+				FTickerDelegate::CreateUObject(this, &UGuideListEntryAsyncAction::Tick));
+#endif
+
 		}
 
 		else
