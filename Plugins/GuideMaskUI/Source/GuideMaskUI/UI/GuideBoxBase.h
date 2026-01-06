@@ -76,25 +76,25 @@ class GUIDEMASKUI_API UGuideBoxBase : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	void SetGuideWidget(UWidget* InWidget);
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	void SetGuideAction(const FGuideBoxActionParameters& InActionParam);
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	EGuideActionType GetActionType() const { return ActionParam.ActionType; }
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	float GetCurrentHoldSeconds() const { return ActionParam.HoldSeconds; }
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	FKey GetCurrentActionKey() const { return ActionParam.ActivationKey; }
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	UWidget* GetActionWidget() const { return ActionWidget.IsValid() ? ActionWidget.Get() : nullptr; }
 
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "GuideBoxBase")
+	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	void ForcedEndAction();
 	
 protected:
