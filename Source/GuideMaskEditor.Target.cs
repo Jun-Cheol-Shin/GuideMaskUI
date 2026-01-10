@@ -9,11 +9,11 @@ public class GuideMaskEditorTarget : TargetRules
 	{
 		Type = TargetType.Editor;
 
-        //DefaultBuildSettings = BuildSettingsVersion.V6;
-        //IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
+        DefaultBuildSettings = BuildSettingsVersion.V6;
+        IncludeOrderVersion = EngineIncludeOrderVersion.Unreal5_7;
 
 		// 4.27
-		DefaultBuildSettings = BuildSettingsVersion.V2;
+		//DefaultBuildSettings = BuildSettingsVersion.V2;
 
 		ExtraModuleNames.AddRange( new string[] { "GuideMask" } );
 	}
