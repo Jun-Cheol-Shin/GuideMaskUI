@@ -23,6 +23,9 @@
 <br>
 
 2. Set the Register widget at the top of the hierarchy.
+### Cautions
+* Do not use Guide Register in list entry widget or inherited EntryGuideIdentifiable widget!
+* Please only one use register.
 <img width="334" height="212" alt="4번" src="https://github.com/user-attachments/assets/cdec8d58-985d-4ecb-abed-4b6f10d7ce22" />
 <br>
 <br>
