@@ -10,11 +10,15 @@
 #include "Components/SizeBox.h"
 
 #include "Blueprint/WidgetLayoutLibrary.h"
+#include "GuideMaskUI/GuideMaskUIFunctionLibrary.h"
+#include "GuideMaskUI/UI/GuideMaskRegister.h"
+#include "GuideMaskUI/GuideActionable.h"
 
 #include "../GuideMaskSettings.h"
 
+
 #if WITH_EDITOR
-void UGuideLayerBase::SetPreviewGuide(const FGeometry& InViewportGeometry, UWidget* InWidget)
+void UGuideLayerBase::NativeOnPreviewGuide(const FGeometry& InViewportGeometry, UWidget* InWidget)
 {
 	SetGuideInternal(InViewportGeometry, InWidget);
 
@@ -40,6 +44,120 @@ void UGuideLayerBase::SetPreviewGuide(const FGeometry& InViewportGeometry, UWidg
 
 #endif
 
+void UGuideLayerBase::SetGuide(const UWidget* InSourceWidget, FName InTag, const FGuideBoxActionParameters& InParameter)
+{
+	Register = UGuideMaskUIFunctionLibrary::GetRegister(GetWorld(), InTag);
+	if (!ensureMsgf(Register.IsValid(), TEXT("Invalid Tag : %s %s"), *InTag.ToString(), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	// todo : 위젯이 안보임
+	VisualWidget = Register->OnGenerateVisualWidget(InSourceWidget);
+	if (!ensureMsgf(VisualWidget, TEXT("Invalid Visual Widget!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), VisualWidget);
+
+	if (nullptr != BoxBaseWidget && InParameter.ActionType != EGuideActionType::None_Action)
+	{
+		BoxBaseWidget->SetGuide(InTag, InParameter);
+		if (nullptr != GuideBoxPanel)
+		{
+			GuideBoxPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		}
+	}
+
+	else
+	{
+		if (nullptr != GuideBoxPanel)
+		{
+			GuideBoxPanel->SetVisibility(ESlateVisibility::Collapsed);
+		}
+	}
+
+	NativeOnShowGuide(InTag);
+}
+
+
+void UGuideLayerBase::NativeOnShowGuide(FName InGuideTag)
+{
+	// todo : call Register Onstart Function
+	if (!ensureMsgf(VisualWidget, TEXT("Invalid Visual Widget!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	UClass* VisualWidgetClass = VisualWidget->GetClass();
+	if (!ensureMsgf(VisualWidgetClass, TEXT("Invalid Visual Widget Class!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	if (IGuideActionable* Actionable = Cast<IGuideActionable>(VisualWidget))
+	{
+		Actionable->NativeOnShow();
+	}
+
+	else if (VisualWidgetClass->ImplementsInterface(UGuideActionable::StaticClass()))
+	{
+		IGuideActionable::Execute_BP_OnShow(VisualWidget);
+	}
+
+	else if(ensure(Register.IsValid()))
+	{
+		Register->OnShow(InGuideTag);
+	}
+
+	else
+	{
+		unimplemented();
+	}
+
+	BP_OnStartGuide(InGuideTag);
+}
+
+void UGuideLayerBase::NativeOnActionGuide(FName InGuideTag)
+{
+	// todo : call Register OnEnd Function.
+	if (!ensureMsgf(VisualWidget, TEXT("Invalid Visual Widget!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	UClass* VisualWidgetClass = VisualWidget->GetClass();
+	if (!ensureMsgf(VisualWidgetClass, TEXT("Invalid Visual Widget Class!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+	{
+		return;
+	}
+
+	if (IGuideActionable* Actionable = Cast<IGuideActionable>(VisualWidget))
+	{
+		Actionable->NativeOnAction();
+	}
+
+	else if (VisualWidgetClass->ImplementsInterface(UGuideActionable::StaticClass()))
+	{
+		IGuideActionable::Execute_BP_OnAction(VisualWidget);
+	}
+
+	else if (ensure(Register.IsValid()))
+	{
+		Register->OnAction(InGuideTag);
+	}
+	else
+	{
+		unimplemented();
+	}
+
+	BP_OnActionGuide(InGuideTag);
+
+	VisualWidget->RemoveFromParent();
+	Register.Reset();
+	VisualWidget = nullptr;
+}
 
 FReply UGuideLayerBase::OnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent)
 {
@@ -69,38 +187,6 @@ FReply UGuideLayerBase::OnTouchEnded(const FGeometry& InGeometry, const FPointer
 	}
 
 	return FReply::Handled();
-}
-
-void UGuideLayerBase::SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParameter)
-{
-	if (nullptr == InWidget)
-	{
-		return;
-	}
-
-	GuideWidget = InWidget;
-	SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), InWidget);
-
-	if (nullptr != BoxBaseWidget && InParameter.ActionType != EGuideActionType::None_Action)
-	{
-		BoxBaseWidget->SetGuideWidget(InWidget);
-		BoxBaseWidget->SetGuideAction(InParameter);
-
-		if (nullptr != GuideBoxPanel)
-		{
-			GuideBoxPanel->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
-		}
-	}
-
-	else
-	{
-		if (nullptr != GuideBoxPanel)
-		{
-			GuideBoxPanel->SetVisibility(ESlateVisibility::Collapsed);
-		}
-	}
-
-	OnStartGuide(InWidget, InParameter);
 }
 
 void UGuideLayerBase::SetGuideInternal(const FGeometry& InViewportGeometry, UWidget* InWidget)
@@ -141,54 +227,77 @@ void UGuideLayerBase::SetGuideInternal(const FGeometry& InViewportGeometry, UWid
 		MaterialInstance->SetVectorParameterValue("Size", FLinearColor(SizeUV.X, SizeUV.Y, 0, 0));
 	}
 
-	if (nullptr != GuideBoxPanel)
+	if (!ensure(GuideBoxPanel))
 	{
-		if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(GuideBoxPanel->Slot))
-		{
-			PanelSlot->SetAnchors(FAnchors(0, 0, 0, 0));
-			PanelSlot->SetSize(GuideWidgetSize);
-			PanelSlot->SetPosition(GuideWidgetPosition);
-		}
+		return;
 	}
 
+	if (UCanvasPanelSlot* PanelSlot = Cast<UCanvasPanelSlot>(GuideBoxPanel->Slot))
+	{
+		PanelSlot->SetAnchors(FAnchors(0, 0, 0, 0));
+		PanelSlot->SetSize(GuideWidgetSize);
+		PanelSlot->SetPosition(GuideWidgetPosition);
+	}
+
+	if (true == GuideBoxPanel->HasChild(InWidget))
+	{
+		return;
+	}
+
+	if (USizeBoxSlot* GuideSlot = Cast<USizeBoxSlot>(GuideBoxPanel->AddChild(InWidget)))
+	{
+		GuideSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+		GuideSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
+	}
 }
 
-FVector2D UGuideLayerBase::GetWidgetPosition() const
+//FVector2D UGuideLayerBase::GetWidgetPosition() const
+//{
+//	if (true == GuideWidget.IsValid())
+//	{
+//		const FGeometry ViewportGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
+//
+//		// Get target location
+//		FVector2D TargetLocalPosition = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().AbsolutePosition);
+//		FVector2D TargetLocation = ViewportGeometry.GetLocalPositionAtCoordinates(FVector2D(0, 0)) + TargetLocalPosition;
+//
+//		return TargetLocation;
+//	}
+//
+//
+//	return FVector2D();
+//}
+//
+//FVector2D UGuideLayerBase::GetWidgetSize() const
+//{
+//	if (true == GuideWidget.IsValid())
+//	{
+//		const FGeometry ViewportGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
+//
+//		// Get target location
+//		FVector2D TargetLocalPosition = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().AbsolutePosition);
+//		FVector2D TargetLocation = ViewportGeometry.GetLocalPositionAtCoordinates(FVector2D(0, 0)) + TargetLocalPosition;
+//
+//		// Get target size
+//		FVector2D TargetLocalBottomRight = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().LocalToAbsolute(GuideWidget->GetTickSpaceGeometry().GetLocalSize()));
+//		FVector2D TargetLocalTopLeft = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().GetAbsolutePosition());
+//		FVector2D TargetLocalSize = TargetLocalBottomRight - TargetLocalTopLeft;
+//
+//		return TargetLocalSize;
+//	}
+//
+//	return FVector2D();
+//}
+
+
+void UGuideLayerBase::SetBoxOffset(const FMargin& InMargin)
 {
-	if (true == GuideWidget.IsValid())
+	GuideBoxOffset = InMargin;
+
+	if (nullptr != VisualWidget)
 	{
-		const FGeometry ViewportGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
-
-		// Get target location
-		FVector2D TargetLocalPosition = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().AbsolutePosition);
-		FVector2D TargetLocation = ViewportGeometry.GetLocalPositionAtCoordinates(FVector2D(0, 0)) + TargetLocalPosition;
-
-		return TargetLocation;
+		SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), VisualWidget);
 	}
-
-
-	return FVector2D();
-}
-
-FVector2D UGuideLayerBase::GetWidgetSize() const
-{
-	if (true == GuideWidget.IsValid())
-	{
-		const FGeometry ViewportGeometry = UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld());
-
-		// Get target location
-		FVector2D TargetLocalPosition = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().AbsolutePosition);
-		FVector2D TargetLocation = ViewportGeometry.GetLocalPositionAtCoordinates(FVector2D(0, 0)) + TargetLocalPosition;
-
-		// Get target size
-		FVector2D TargetLocalBottomRight = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().LocalToAbsolute(GuideWidget->GetTickSpaceGeometry().GetLocalSize()));
-		FVector2D TargetLocalTopLeft = ViewportGeometry.AbsoluteToLocal(GuideWidget->GetTickSpaceGeometry().GetAbsolutePosition());
-		FVector2D TargetLocalSize = TargetLocalBottomRight - TargetLocalTopLeft;
-
-		return TargetLocalSize;
-	}
-
-	return FVector2D();
 }
 
 void UGuideLayerBase::SetEnableAnim(bool bIsEnable)
@@ -237,16 +346,6 @@ float UGuideLayerBase::GetOpacity() const
 	return Opacity;
 }
 
-void UGuideLayerBase::SetBoxOffset(const FMargin& InMargin)
-{
-	GuideBoxOffset = InMargin;
-
-	if (true == GuideWidget.IsValid())
-	{
-		SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), GuideWidget.Get());
-	}
-}
-
 const FMargin& UGuideLayerBase::GetBoxOffset() const
 {
 	return GuideBoxOffset;
@@ -256,7 +355,10 @@ void UGuideLayerBase::NativeConstruct()
 {
 	Super::NativeConstruct();
 
-	MaterialInstance = BlackScreen->GetDynamicMaterial();
+	if (ensure(BlackScreen))
+	{
+		MaterialInstance = BlackScreen->GetDynamicMaterial();
+	}
 
 	if (nullptr != LayerPanel)
 	{
@@ -271,35 +373,32 @@ void UGuideLayerBase::NativeConstruct()
 	if (nullptr != GuideBoxPanel)
 	{
 		GuideBoxPanel->SetVisibility(ESlateVisibility::Collapsed);
+	}
 
-		if (GuideBoxPanel->GetChildrenCount() <= 0)
+	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
+	if (ensureAlways(Settings))
+	{
+		if (!ensureAlwaysMsgf(Settings->DefaultBox.ToSoftObjectPath().IsValid(), 
+			TEXT("Invalid Box base class in the project settings.")))
 		{
-			const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
-			if (ensureAlways(Settings))
+			return;
+		}
+
+		TSubclassOf<UGuideBoxBase> BoxBaseClass = Settings->DefaultBox.LoadSynchronous();
+
+		BoxBaseWidget = CreateWidget<UGuideBoxBase>(this, BoxBaseClass);
+
+		if (ensure(BoxBaseWidget))
+		{
+			if (USizeBoxSlot* PanelSlot = Cast<USizeBoxSlot>(GuideBoxPanel->AddChild(BoxBaseWidget)))
 			{
-				if (!ensureAlwaysMsgf(Settings->DefaultBox.ToSoftObjectPath().IsValid(),
-					TEXT("Invalid Box base class in the project settings.")))
-				{
-					return;
-				}
-
-				TSubclassOf<UGuideBoxBase> BoxBaseClass = Settings->DefaultBox.LoadSynchronous();
-
-				BoxBaseWidget = CreateWidget<UGuideBoxBase>(this, BoxBaseClass);
-
-				if (ensure(BoxBaseWidget))
-				{
-					if (USizeBoxSlot* PanelSlot = Cast<USizeBoxSlot>(GuideBoxPanel->AddChild(BoxBaseWidget)))
-					{
-						PanelSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
-						PanelSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
-					}
-
-
-					BoxBaseWidget->SetVisibility(ESlateVisibility::Visible);
-					BoxBaseWidget->OnCompleteActionEvent.AddDynamic(this, &UGuideLayerBase::OnEndGuide);
-				}
+				PanelSlot->SetHorizontalAlignment(EHorizontalAlignment::HAlign_Fill);
+				PanelSlot->SetVerticalAlignment(EVerticalAlignment::VAlign_Fill);
 			}
+
+
+			BoxBaseWidget->SetVisibility(ESlateVisibility::Visible);
+			BoxBaseWidget->OnCompleteActionEvent.AddDynamic(this, &UGuideLayerBase::NativeOnActionGuide);
 		}
 	}
 
@@ -311,6 +410,8 @@ void UGuideLayerBase::NativeDestruct()
 {
 	FViewport::ViewportResizedEvent.RemoveAll(this);
 	MaterialInstance = nullptr;
+	Register.Reset();
+	VisualWidget = nullptr;
 
 	Super::NativeDestruct();
 }
@@ -373,8 +474,8 @@ void UGuideLayerBase::SynchronizeProperties()
 
 void UGuideLayerBase::OnResizedViewport(FViewport* InViewport, uint32 InMessage)
 {
-	if (true == GuideWidget.IsValid())
+	if (nullptr != VisualWidget)
 	{
-		SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), GuideWidget.Get());
+		SetGuideInternal(UWidgetLayoutLibrary::GetViewportWidgetGeometry(GetWorld()), VisualWidget);
 	}
 }

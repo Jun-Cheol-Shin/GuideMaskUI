@@ -408,7 +408,6 @@ void USampleHUD::Initialize_SampleListView()
 
 		SampleListView->SetListItems(ListItems);
 	}
-
 }
 void USampleHUD::Initialize_TagComboBox()
 {

@@ -40,7 +40,8 @@ public class GuideMaskUI : ModuleRules
                 "Slate",
                 "SlateCore",
                 "UMG",
-                "InputCore"
+                "InputCore",
+                "DeveloperSettings"
 				// ... add private dependencies that you statically link with here ...	
 			}
 			);
@@ -52,7 +53,7 @@ public class GuideMaskUI : ModuleRules
 				new string[]
 				{	
 					"UMGEditor", 
-					"DeveloperSettings"
+
 				}
 				);
 		}

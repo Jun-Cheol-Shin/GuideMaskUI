@@ -8,12 +8,16 @@
 
 UGuideListEntryAsyncAction* UGuideListEntryAsyncAction::Create(UObject* InWorldContextObject, UListView* InListView, UObject* InListItem, float InTimeout)
 {
-	UGuideListEntryAsyncAction* NewAction = NewObject<UGuideListEntryAsyncAction>();
-	NewAction->WorldContext = InWorldContextObject;
-	NewAction->ListViewPtr = InListView;
-	NewAction->ItemPtr = InListItem;
-	NewAction->Timeout = FMath::Max(0.5f, InTimeout);
-	//NewAction->bDoScroll = bScrollIntoView;
+	UGuideListEntryAsyncAction* NewAction = nullptr;
+	if (UWorld* World = GEngine->GetWorldFromContextObject(InWorldContextObject, EGetWorldErrorMode::LogAndReturnNull))
+	{
+		NewAction = NewObject<UGuideListEntryAsyncAction>();
+		NewAction->ListViewPtr = InListView;
+		NewAction->ItemPtr = InListItem;
+		NewAction->Timeout = FMath::Max(0.5f, InTimeout);
+
+		NewAction->RegisterWithGameInstance(World);
+	}
 
 	return NewAction;
 }
@@ -77,6 +81,12 @@ void UGuideListEntryAsyncAction::HandleItemScrolledIntoView(UObject* Item, UUser
 
 bool UGuideListEntryAsyncAction::Tick(float DeltaSeconds)
 {
+	if (!ensure(ListViewPtr))
+	{
+		Fail();
+		return false;
+	}
+
 	if (Timeout > 0.f && (FPlatformTime::Seconds() - StartTime) >= Timeout)
 	{
 		Fail();
@@ -118,8 +128,16 @@ void UGuideListEntryAsyncAction::Clear()
 {
 	bFindEntry = false;
 
+#if ENGINE_MAJOR_VERSION >= 5
+	FTSTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+#else
+	FTicker::GetCoreTicker().RemoveTicker(TickerHandle);
+#endif
+
 	if (ListViewPtr)
 	{
 		ListViewPtr->OnItemScrolledIntoView().RemoveAll(this);
 	}
+
+
 }

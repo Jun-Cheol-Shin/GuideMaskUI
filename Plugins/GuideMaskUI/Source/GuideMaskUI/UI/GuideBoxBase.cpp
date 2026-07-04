@@ -11,21 +11,22 @@
 #include "Runtime/Launch/Resources/Version.h"
 
 
-void UGuideBoxBase::SetGuideWidget(UWidget* InWidget)
+//void UGuideBoxBase::SetGuideWidget(UWidget* InWidget)
+//{
+//	ActionWidget = InWidget;
+//
+//	/*if (nullptr != HoldProgressBar && nullptr != HoldProgressBar->GetParent())
+//	{
+//		HoldProgressBar->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
+//		HoldProgressBar->SetPercent(0.f);
+//	}*/
+//
+//	//SetGuideAction(InActionParam);
+//}
+
+void UGuideBoxBase::SetGuide(FName InTag, const FGuideBoxActionParameters& InActionParam)
 {
-	ActionWidget = InWidget;
-
-	/*if (nullptr != HoldProgressBar && nullptr != HoldProgressBar->GetParent())
-	{
-		HoldProgressBar->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
-		HoldProgressBar->SetPercent(0.f);
-	}*/
-
-	//SetGuideAction(InActionParam);
-}
-
-void UGuideBoxBase::SetGuideAction(const FGuideBoxActionParameters& InActionParam)
-{
+	GuideTag = InTag;
 	ActionParam.ActionType = InActionParam.ActionType;
 	ActionParam.ActivationKey = InActionParam.ActivationKey;
 
@@ -50,86 +51,88 @@ FReply UGuideBoxBase::NativeOnStartClickAction(const FGeometry& InGeometry, cons
 		return FReply::Unhandled();
 	}
 
+	//if (!ensure(ActionWidget.IsValid()))
+	//{
+	//	return FReply::Unhandled();
+	//}
+
 	TouchStartPos = InGeometry.AbsoluteToLocal(InEvent.GetScreenSpacePosition());
 
-	if (ActionWidget.IsValid())
+	/*if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
 	{
-		if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
-		{
 
 #if ENGINE_MAJOR_VERSION >= 5
-			CachedClickMethod = ButtonWidget->GetClickMethod();
-			CachedTouchMethod = ButtonWidget->GetTouchMethod();
+		CachedClickMethod = ButtonWidget->GetClickMethod();
+		CachedTouchMethod = ButtonWidget->GetTouchMethod();
 #else
-			CachedClickMethod = ButtonWidget->ClickMethod;
-			CachedTouchMethod = ButtonWidget->TouchMethod;
+		CachedClickMethod = ButtonWidget->ClickMethod;
+		CachedTouchMethod = ButtonWidget->TouchMethod;
 #endif
 
-			ButtonWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
-			ButtonWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
+		ButtonWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
+		ButtonWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
 
-			if (ActionWidget.IsValid())
+		if (ActionWidget.IsValid())
+		{
+			TSharedRef<SWidget> ButtonSlateWidget = ButtonWidget->TakeWidget();
+			if (ensure(&ButtonSlateWidget))
 			{
-				TSharedRef<SWidget> ButtonSlateWidget = ButtonWidget->TakeWidget();
-				if (ensure(&ButtonSlateWidget))
-				{
-					ButtonSlateWidget.Get().OnMouseButtonDown(InGeometry, InEvent);
-				}
+				ButtonSlateWidget.Get().OnMouseButtonDown(InGeometry, InEvent);
 			}
 		}
+	}
 
-		else if (UCheckBox* CheckBoxWidget = Cast<UCheckBox>(ActionWidget))
-		{
+	else if (UCheckBox* CheckBoxWidget = Cast<UCheckBox>(ActionWidget))
+	{
 
 #if ENGINE_MAJOR_VERSION >= 5
-			CachedClickMethod = CheckBoxWidget->GetClickMethod();
-			CachedTouchMethod = CheckBoxWidget->GetTouchMethod();
+		CachedClickMethod = CheckBoxWidget->GetClickMethod();
+		CachedTouchMethod = CheckBoxWidget->GetTouchMethod();
 #else
-			CachedClickMethod = CheckBoxWidget->ClickMethod;
-			CachedTouchMethod = CheckBoxWidget->TouchMethod;
+		CachedClickMethod = CheckBoxWidget->ClickMethod;
+		CachedTouchMethod = CheckBoxWidget->TouchMethod;
 #endif
 
-			CheckBoxWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
-			CheckBoxWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
+		CheckBoxWidget->SetClickMethod(EButtonClickMethod::PreciseClick);
+		CheckBoxWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
 
-			TSharedRef<SWidget> CheckBoxSlateWidget = CheckBoxWidget->TakeWidget();
-			if (ensure(&CheckBoxSlateWidget))
-			{
-				CheckBoxSlateWidget.Get().OnMouseButtonDown(InGeometry,
-					CreateMouseLikePointerEventFromTouch(InEvent));
-			}
+		TSharedRef<SWidget> CheckBoxSlateWidget = CheckBoxWidget->TakeWidget();
+		if (ensure(&CheckBoxSlateWidget))
+		{
+			CheckBoxSlateWidget.Get().OnMouseButtonDown(InGeometry,
+				CreateMouseLikePointerEventFromTouch(InEvent));
+		}
+	}
+
+	else
+	{
+		TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
+		if (InEvent.IsTouchEvent())
+		{
+			SlateWidget->OnTouchStarted(InGeometry, InEvent);
 		}
 
 		else
 		{
-			TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-			if (ensure(&SlateWidget))
-			{
-				if (InEvent.IsTouchEvent())
-				{
-					SlateWidget->OnTouchStarted(InGeometry, InEvent);
-				}
-
-				else
-				{
-					SlateWidget->OnMouseButtonDown(InGeometry, InEvent);
-				}
-			}
+			SlateWidget->OnMouseButtonDown(InGeometry, InEvent);
 		}
+	}*/
 
-		if (OnMouseDownEvent.IsBound())
-		{
-			OnMouseDownEvent.Broadcast(InGeometry, InEvent);
-		}
-
-		return FReply::Handled().CaptureMouse(TakeWidget());
+	if (OnMouseDownEvent.IsBound())
+	{
+		OnMouseDownEvent.Broadcast(InGeometry, InEvent);
 	}
 
-	return FReply::Unhandled();
+	return FReply::Handled().CaptureMouse(TakeWidget());
 }
 
 FReply UGuideBoxBase::NativeOnMoveAction(const FGeometry& InGeometry, const FPointerEvent& InEvent)
 {
+	/*if (!ensure(ActionWidget.IsValid()))
+	{
+		return FReply::Unhandled();
+	}*/
+
 	if (TouchStartPos.IsZero())
 	{
 		return FReply::Unhandled();
@@ -144,19 +147,22 @@ FReply UGuideBoxBase::NativeOnMoveAction(const FGeometry& InGeometry, const FPoi
 	{
 	case EGuideActionType::Drag:
 	{
-		if (ActionWidget.IsValid())
+		/*if (ActionWidget.IsValid())
 		{
 			TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-			if (ensure(&SlateWidget))
-			{
-				SlateWidget->OnMouseMove(InGeometry, InEvent);
-				SlateWidget->OnTouchMoved(InGeometry, InEvent);
+			SlateWidget->OnMouseMove(InGeometry, InEvent);
+			SlateWidget->OnTouchMoved(InGeometry, InEvent);
 
-				if (OnMouseMovedEvent.IsBound())
-				{
-					OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
-				}
+			if (OnMouseMovedEvent.IsBound())
+			{
+				OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
 			}
+		}*/
+
+
+		if (OnMouseMovedEvent.IsBound())
+		{
+			OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
 		}
 
 		if (CorrectedDragThreshold <= MoveVec.Size())
@@ -175,19 +181,21 @@ FReply UGuideBoxBase::NativeOnMoveAction(const FGeometry& InGeometry, const FPoi
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Success Swipe!"));
 
-			if (ActionWidget.IsValid())
+			/*if (ActionWidget.IsValid())
 			{
 				TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-				if (ensure(&SlateWidget))
-				{
-					SlateWidget->OnMouseMove(InGeometry, InEvent);
-					SlateWidget->OnTouchMoved(InGeometry, InEvent);
+				SlateWidget->OnMouseMove(InGeometry, InEvent);
+				SlateWidget->OnTouchMoved(InGeometry, InEvent);
 
-					if (OnMouseMovedEvent.IsBound())
-					{
-						OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
-					}
+				if (OnMouseMovedEvent.IsBound())
+				{
+					OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
 				}
+			}*/
+
+			if (OnMouseMovedEvent.IsBound())
+			{
+				OnMouseMovedEvent.Broadcast(InGeometry, InEvent);
 			}
 
 			if (CorrectedDragThreshold <= MoveVec.Size())
@@ -221,79 +229,78 @@ FReply UGuideBoxBase::NativeOnEndClickAction(const FGeometry& InGeometry, const 
 		return FReply::Unhandled();
 	}
 
-	if (ActionWidget.IsValid())
+	//if (!ensure(ActionWidget.IsValid()))
+	//{
+	//	return FReply::Unhandled();
+	//}
+
+	/*if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
 	{
-		if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
+		ButtonWidget->SetClickMethod(EButtonClickMethod::MouseUp);
+		ButtonWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
+
+		TSharedRef<SWidget> ButtonSlateWidget = ButtonWidget->TakeWidget();
+		if (ensure(&ButtonSlateWidget))
 		{
-			ButtonWidget->SetClickMethod(EButtonClickMethod::MouseUp);
-			ButtonWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
-
-			TSharedRef<SWidget> ButtonSlateWidget = ButtonWidget->TakeWidget();
-			if (ensure(&ButtonSlateWidget))
-			{
-				ButtonSlateWidget.Get().OnMouseButtonUp(InGeometry, InEvent);
-			}
-
-			ButtonWidget->SetClickMethod(CachedClickMethod);
-			ButtonWidget->SetTouchMethod(CachedTouchMethod);
+			ButtonSlateWidget.Get().OnMouseButtonUp(InGeometry, InEvent);
 		}
 
-		else if (UCheckBox* CheckBoxWidget = Cast<UCheckBox>(ActionWidget))
+		ButtonWidget->SetClickMethod(CachedClickMethod);
+		ButtonWidget->SetTouchMethod(CachedTouchMethod);
+	}
+
+	else if (UCheckBox* CheckBoxWidget = Cast<UCheckBox>(ActionWidget))
+	{
+		CheckBoxWidget->SetClickMethod(EButtonClickMethod::MouseUp);
+		CheckBoxWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
+
+		TSharedRef<SWidget> CheckBoxSlateWidget = CheckBoxWidget->TakeWidget();
+		if (ensure(&CheckBoxSlateWidget))
 		{
-			CheckBoxWidget->SetClickMethod(EButtonClickMethod::MouseUp);
-			CheckBoxWidget->SetTouchMethod(EButtonTouchMethod::PreciseTap);
-
-			TSharedRef<SWidget> CheckBoxSlateWidget = CheckBoxWidget->TakeWidget();
-			if (ensure(&CheckBoxSlateWidget))
-			{
-				CheckBoxSlateWidget.Get().OnMouseButtonUp(InGeometry,
-					CreateMouseLikePointerEventFromTouch(InEvent));
-			}
+			CheckBoxSlateWidget.Get().OnMouseButtonUp(InGeometry,
+				CreateMouseLikePointerEventFromTouch(InEvent));
+		}
 
 
-			CheckBoxWidget->SetClickMethod(CachedClickMethod);
-			CheckBoxWidget->SetTouchMethod(CachedTouchMethod);
+		CheckBoxWidget->SetClickMethod(CachedClickMethod);
+		CheckBoxWidget->SetTouchMethod(CachedTouchMethod);
 
+	}
+
+	else
+	{
+		TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
+		if (InEvent.IsTouchEvent())
+		{
+			SlateWidget->OnTouchEnded(InGeometry, InEvent);
 		}
 
 		else
 		{
-			TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-			if (ensure(&SlateWidget))
-			{
-				if (InEvent.IsTouchEvent())
-				{
-					SlateWidget->OnTouchEnded(InGeometry, InEvent);
-				}
-
-				else
-				{
-					SlateWidget->OnMouseButtonUp(InGeometry, InEvent);
-				}
-			}
+			SlateWidget->OnMouseButtonUp(InGeometry, InEvent);
 		}
+	}*/
 
 
-		if (OnMouseUpEvent.IsBound())
-		{
-			OnMouseUpEvent.Broadcast(InGeometry, InEvent);
-		}
-
-		NativeOnEndAction(InEvent);
-
-		return FReply::Handled().ReleaseMouseCapture();
+	if (OnMouseUpEvent.IsBound())
+	{
+		OnMouseUpEvent.Broadcast(InGeometry, InEvent);
 	}
 
-	return FReply::Unhandled();
+	NativeOnEndAction(InEvent);
+
+	return FReply::Handled().ReleaseMouseCapture();
 }
 
 FReply UGuideBoxBase::NativeOnStartKeyAction(const FGeometry& InGeometry, const FKeyEvent& InEvent)
 {
-	TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-	if (ensure(&SlateWidget))
-	{
-		SlateWidget->OnKeyDown(InGeometry, InEvent);
-	}
+	//if (false == ActionWidget.IsValid())
+	//{
+	//	return FReply::Unhandled();
+	//}
+
+	//TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
+	//SlateWidget->OnKeyDown(InGeometry, InEvent);
 
 	if (OnKeyDownEvent.IsBound())
 	{
@@ -305,11 +312,13 @@ FReply UGuideBoxBase::NativeOnStartKeyAction(const FGeometry& InGeometry, const 
 
 FReply UGuideBoxBase::NativeOnEndKeyAction(const FGeometry& InGeometry, const FKeyEvent& InEvent)
 {
-	TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-	if (ensure(&SlateWidget))
+	/*if (!ensure(ActionWidget.IsValid()))
 	{
-		SlateWidget->OnKeyUp(InGeometry, InEvent);
+		return FReply::Unhandled();
 	}
+
+	TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
+	SlateWidget->OnKeyUp(InGeometry, InEvent);*/
 
 	if (OnKeyUpEvent.IsBound())
 	{
@@ -336,14 +345,9 @@ void UGuideBoxBase::NativeOnEndAction(const FPointerEvent& InEvent)
 	}
 #endif
 
-	if (ActionParam.WidgetActionEvent.IsBound())
-	{
-		ActionParam.WidgetActionEvent.Execute();
-	}
-
 	if (OnCompleteActionEvent.IsBound())
 	{
-		OnCompleteActionEvent.Broadcast();
+		OnCompleteActionEvent.Broadcast(GuideTag);
 	}
 
 	Clear();
@@ -548,7 +552,7 @@ FReply UGuideBoxBase::NativeOnTouchEnded(const FGeometry& InGeometry, const FPoi
 #if ENGINE_MAJOR_VERSION >= 5
 	if (false == TouchStartPos.IsZero())
 #else
-	if (FVector2D::ZeroVector == TouchStartPos)
+	if (FVector2D::ZeroVector != TouchStartPos)
 #endif
 	{
 
@@ -610,7 +614,7 @@ FReply UGuideBoxBase::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent
 #if ENGINE_MAJOR_VERSION >= 5
 	if (EGuideActionType::Hold == ActionParam.ActionType && false == TouchStartPos.IsZero())
 #else
-	if (EGuideActionType::Hold == ActionParam.ActionType && FVector2D::ZeroVector == TouchStartPos)
+	if (EGuideActionType::Hold == ActionParam.ActionType && FVector2D::ZeroVector != TouchStartPos)
 #endif
 	{
 		StartTime = 0.f;
@@ -635,14 +639,11 @@ FReply UGuideBoxBase::NativeOnKeyUp(const FGeometry& InGeometry, const FKeyEvent
 
 void UGuideBoxBase::NativeOnMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent)
 {
-	if (ActionWidget.IsValid())
+	/*if (ActionWidget.IsValid())
 	{
 		TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-		if (ensure(&SlateWidget))
-		{
-			SlateWidget.Get().OnMouseEnter(InGeometry, InMouseEvent);
-		}
-	}
+		SlateWidget.Get().OnMouseEnter(InGeometry, InMouseEvent);
+	}*/
 }
 
 void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
@@ -652,14 +653,10 @@ void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 		HoldProgressBar->GetParent()->SetVisibility(ESlateVisibility::Collapsed);
 	}*/
 
-	if (ActionWidget.IsValid())
+	/*if (ActionWidget.IsValid())
 	{
 		TSharedRef<SWidget> SlateWidget = ActionWidget->TakeWidget();
-		if (ensure(&SlateWidget))
-		{
-			SlateWidget.Get().OnMouseLeave(InMouseEvent);
-		}
-
+		SlateWidget.Get().OnMouseLeave(InMouseEvent);
 
 		if (UButton* ButtonWidget = Cast<UButton>(ActionWidget))
 		{
@@ -672,7 +669,7 @@ void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 			CheckBoxWidget->SetClickMethod(CachedClickMethod);
 			CheckBoxWidget->SetTouchMethod(CachedTouchMethod);
 		}
-	}
+	}*/
 
 	if (false == IsDragType(ActionParam.ActionType))
 	{
@@ -691,6 +688,7 @@ void UGuideBoxBase::NativeOnMouseLeave(const FPointerEvent& InMouseEvent)
 
 void UGuideBoxBase::Clear()
 {
+	GuideTag = FName();
 	StartTime = 0.f;
 
 #if ENGINE_MAJOR_VERSION >= 5
@@ -699,9 +697,8 @@ void UGuideBoxBase::Clear()
 	TouchStartPos = FVector2D::ZeroVector;
 #endif
 
-	ActionWidget.Reset();
+	//ActionWidget.Reset();
 
-	ActionParam.WidgetActionEvent.Clear();
 	ActionParam.ActionType = EGuideActionType::None_Action;
 	ActionParam.DragThresholdVectorSize = 0.f;
 	ActionParam.HoldSeconds = 0.f;
@@ -756,14 +753,9 @@ FPointerEvent UGuideBoxBase::CreateMouseLikePointerEventFromTouch(const FPointer
 
 void UGuideBoxBase::ForcedEndAction()
 {
-	if (ActionParam.WidgetActionEvent.IsBound())
-	{
-		ActionParam.WidgetActionEvent.Execute();
-	}
-
 	if (OnCompleteActionEvent.IsBound())
 	{
-		OnCompleteActionEvent.Broadcast();
+		OnCompleteActionEvent.Broadcast(GuideTag);
 	}
 
 	Clear();

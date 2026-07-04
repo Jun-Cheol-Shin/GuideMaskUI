@@ -12,6 +12,7 @@ class UCanvasPanel;
 class UImage;
 
 class UGuideBoxBase;
+class UGuideMaskRegister;
 struct FGuideBoxActionParameters;
 
 UCLASS()
@@ -19,17 +20,17 @@ class GUIDEMASKUI_API UGuideLayerBase : public UUserWidget
 {
 	GENERATED_BODY()
 
+	friend class UGuideMaskRegister;
+
 public:
 	UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
-	void SetGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParameter);
+	void SetGuide(const UWidget* InSourceWidget, FName InTag, const FGuideBoxActionParameters& InParameter);
 
+	//UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
+	//FVector2D GetWidgetPosition() const;
 
-	UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
-	FVector2D GetWidgetPosition() const;
-
-	UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
-	FVector2D GetWidgetSize() const;
-
+	//UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
+	//FVector2D GetWidgetSize() const;
 
 	UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
 	void SetEnableAnim(bool bIsEnable);
@@ -60,12 +61,13 @@ public:
 	void SetBoxOffset(const FMargin& InMargin);
 
 #if WITH_EDITOR
-public:
-	void SetPreviewGuide(const FGeometry& InViewportGeometry, UWidget* InWidget);
+protected:
+	void NativeOnPreviewGuide(const FGeometry& InViewportGeometry, UWidget* InWidget);
 
 	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Preview Guide"))
 	void BP_OnPreviewGuide(const FVector2D& InPreviewWidgetPosition, const FVector2D& InPreviewWidgetSize);
 
+public:
 	/**
 	 * Called whenever a preview layer is made for this widget in the designer.
 	 */
@@ -73,20 +75,22 @@ public:
 #endif
 
 protected:
-	virtual void SetGuideInternal(const FGeometry& InViewportGeometry, UWidget* InWidget);
+	virtual void NativeOnShowGuide(FName InGuideTag);
 
-protected:
-	UFUNCTION(BlueprintNativeEvent, meta = (DisplayName = "On Start Action"))
-	void OnStartGuide(UWidget* InWidget, const FGuideBoxActionParameters& InParam);
-	virtual void OnStartGuide_Implementation(UWidget* InWidget, const FGuideBoxActionParameters& InParam) {};
+	UFUNCTION()
+	virtual void NativeOnActionGuide(FName InGuideTag);
 
-	UFUNCTION(BlueprintNativeEvent, meta = (DisplayName = "On End Action"))
-	void OnEndGuide();
-	virtual void OnEndGuide_Implementation() {};
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On Start Action"))
+	void BP_OnStartGuide(FName InGuideTag);
+
+	UFUNCTION(BlueprintImplementableEvent, meta = (DisplayName = "On End Action"))
+	void BP_OnActionGuide(FName InGuideTag);
 
 	virtual FReply OnKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent);
 	virtual FReply OnMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InEvent);
 	virtual FReply OnTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InEvent);
+
+	virtual void SetGuideInternal(const FGeometry& InViewportGeometry, UWidget* InWidget);
 
 protected:
 	virtual void NativeConstruct() override;
@@ -142,5 +146,9 @@ protected:
 	UPROPERTY(Transient)
 	UGuideBoxBase* BoxBaseWidget = nullptr;
 
-	TWeakObjectPtr<UWidget> GuideWidget = nullptr;
+	UPROPERTY(Transient)
+	UWidget* VisualWidget = nullptr;
+
+	TWeakObjectPtr<UGuideMaskRegister> Register = nullptr;
+
 };

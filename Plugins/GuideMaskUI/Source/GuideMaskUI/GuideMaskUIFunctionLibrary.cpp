@@ -7,7 +7,7 @@
 #include "../GuideMaskUI/UI/GuideMaskRegister.h"
 #include "../GuideMaskUI/UI/GuideLayerBase.h"
 #include "../GuideMaskUI/GuideMaskSettings.h"
-#include "../GuideMaskUI/EntryGuideIdentifiable.h"
+#include "../GuideMaskUI/NestedWidgetProvidable.h"
 
 #include "Engine/StreamableManager.h"
 #include "Engine/AssetManager.h"
@@ -15,56 +15,23 @@
 #include "Components/ListView.h"
 #include "Components/DynamicEntryBox.h"
 
-//#include "UObject/UObjectGlobals.h"
-
-void UGuideMaskUIFunctionLibrary::ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
+void UGuideMaskUIFunctionLibrary::ShowGuide(UObject* WorldContextObject, FName InTag, const FGuideBoxActionParameters& InActionParam, const TArray<FGuideDynamicWidgetPath>& InPath, int InLayerZOrder, float InAsyncTimeout)
 {
 	if (nullptr == WorldContextObject)
 	{
 		return;
 	}
 
-	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
-	if (ensureAlways(Settings) && Settings->DefaultLayer.ToSoftObjectPath().IsValid())
-	{
-		TSubclassOf<UGuideLayerBase> WidgetClass = Settings->DefaultLayer.LoadSynchronous();
-		UGuideLayerBase* GuideLayer = CreateWidget<UGuideLayerBase>(WorldContextObject->GetWorld(), WidgetClass);
-		
-		GuideLayer->AddToViewport(InLayerZOrder);
-
-		if (ensure(GuideLayer))
-		{
-			GuideLayer->SetGuide(InTagWidget, InActionParam);
-		}
-	}
-}
-
-void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(UObject* WorldContextObject, UListView* InTagListView, UObject* InListItem, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
-{
-	if (nullptr == WorldContextObject)
+	UWidget* SourceWidget = GetTagWidget(WorldContextObject, InTag);
+	if (!ensureMsgf(SourceWidget, TEXT("Invalid Source Widget!! %s"), ANSI_TO_TCHAR(__FUNCTION__)))
 	{
 		return;
 	}
 
-	if (UGuideListEntryAsyncAction* AsyncAction = 
-		UGuideListEntryAsyncAction::Create(WorldContextObject->GetWorld(), 
-			InTagListView, 
-			InListItem, 
-			InAsyncTimeout))
-	{
-		AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
-			[InActionParam, InLayerZOrder](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
-			{
-				UGuideMaskUIFunctionLibrary::ShowGuideWidget(InWorldContextObject, InEntryWidget, InActionParam, InLayerZOrder);
-			});
-
-		AsyncAction->Activate();
-	}
-
+	ShowGuideInternal(WorldContextObject, SourceWidget, InTag, InActionParam, InPath, InLayerZOrder, InAsyncTimeout);
 }
 
-
-void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextObject, UWidget* InWidget, const TArray<FGuideDynamicWidgetPath>& InPath, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
+void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject, UWidget* InWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, const TArray<FGuideDynamicWidgetPath>& InPath, int InLayerZOrder, float InAsyncTimeout)
 {
 	if (nullptr == WorldContextObject)
 	{
@@ -74,13 +41,13 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextOb
 #if ENGINE_MAJOR_VERSION >= 5
 	if (true == InPath.IsEmpty())
 	{
-		ShowGuideWidget(WorldContextObject, InWidget, InActionParam, InLayerZOrder);
+		ShowGuideWidget(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
 		return;
 	}
 #else
 	if (0 >= InPath.Num())
 	{
-		ShowGuideWidget(WorldContextObject, InWidget, InActionParam, InLayerZOrder);
+		ShowGuideWidget(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
 		return;
 	}
 #endif
@@ -108,7 +75,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextOb
 					InAsyncTimeout))
 			{
 				AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
-					[NewPath, ChildIndex = CurrentPath.NextChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
+					[InTag, NewPath, ChildIndex = CurrentPath.NextChildIndex, InActionParam, InLayerZOrder, InAsyncTimeout](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
 					{
 						if (nullptr == InEntryWidget)
 						{
@@ -116,31 +83,31 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextOb
 						}
 
 						TArray<UWidget*> Childs;
-						if (true == InEntryWidget->GetClass()->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+						if (true == InEntryWidget->GetClass()->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 						{
-							IEntryGuideIdentifiable::Execute_GetDesiredNestedWidgets(InEntryWidget, OUT Childs);
+							INestedWidgetProvidable::Execute_GetDesiredNestedWidgets(InEntryWidget, OUT Childs);
 						}
 
-						else if (IEntryGuideIdentifiable* Identify = Cast<IEntryGuideIdentifiable>(InEntryWidget))
+						else if (INestedWidgetProvidable* Identify = Cast<INestedWidgetProvidable>(InEntryWidget))
 						{
 							Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
 						}
 
 						if (false == Childs.IsValidIndex(ChildIndex))
 						{
-							ShowGuideWidget(InWorldContextObject, InEntryWidget, InActionParam, InLayerZOrder);
+							ShowGuideWidget(InWorldContextObject, InEntryWidget, InTag, InActionParam, InLayerZOrder);
 						}
 
 						else
 						{
-							ShowGuideDynamicWidget(InWorldContextObject, Childs[ChildIndex], NewPath, InActionParam, InLayerZOrder, InAsyncTimeout);
-						}					
+							ShowGuideInternal(InWorldContextObject, Childs[ChildIndex], InTag, InActionParam, NewPath, InLayerZOrder, InAsyncTimeout);
+						}
 					});
 
 				AsyncAction->OnFailedNative.AddWeakLambda(WorldContextObject,
-					[WorldContextObject, ListView, InActionParam, InLayerZOrder]()
+					[InTag, WorldContextObject, ListView, InActionParam, InLayerZOrder]()
 					{
-						ShowGuideWidget(WorldContextObject, ListView, InActionParam, InLayerZOrder);
+						ShowGuideWidget(WorldContextObject, ListView, InTag, InActionParam, InLayerZOrder);
 					});
 
 				AsyncAction->Activate();
@@ -156,42 +123,92 @@ void UGuideMaskUIFunctionLibrary::ShowGuideDynamicWidget(UObject* WorldContextOb
 			});
 
 		UUserWidget* EntryPtr = Entry && *Entry ? *Entry : nullptr;
-		
+
 		if (nullptr != EntryPtr)
 		{
 			TArray<UWidget*> Childs;
-			if (true == EntryPtr->GetClass()->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			if (true == EntryPtr->GetClass()->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 			{
-				IEntryGuideIdentifiable::Execute_GetDesiredNestedWidgets(EntryPtr, OUT Childs);
+				INestedWidgetProvidable::Execute_GetDesiredNestedWidgets(EntryPtr, OUT Childs);
 			}
 
-			else if (IEntryGuideIdentifiable* Identify = Cast<IEntryGuideIdentifiable>(EntryPtr))
+			else if (INestedWidgetProvidable* Identify = Cast<INestedWidgetProvidable>(EntryPtr))
 			{
 				Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
 			}
 
 			if (false == Childs.IsValidIndex(CurrentPath.NextChildIndex))
 			{
-				ShowGuideWidget(WorldContextObject, EntryPtr, InActionParam, InLayerZOrder);
+				ShowGuideWidget(WorldContextObject, EntryPtr, InTag, InActionParam, InLayerZOrder);
 			}
 
 			else
 			{
-				ShowGuideDynamicWidget(WorldContextObject, Childs[CurrentPath.NextChildIndex], NewPath, InActionParam, InLayerZOrder, InAsyncTimeout);
+				ShowGuideInternal(WorldContextObject, Childs[CurrentPath.NextChildIndex], InTag, InActionParam, NewPath, InLayerZOrder, InAsyncTimeout);
 			}
 		}
 
 		else
 		{
-			ShowGuideWidget(WorldContextObject, EntryBox, InActionParam, InLayerZOrder);
+			ShowGuideWidget(WorldContextObject, EntryBox, InTag, InActionParam, InLayerZOrder);
 		}
 	}
 
 	else
 	{
-		ShowGuideWidget(WorldContextObject, InWidget, InActionParam, InLayerZOrder);
+		ShowGuideWidget(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
 	}
 }
+
+void UGuideMaskUIFunctionLibrary::ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
+{
+	if (nullptr == WorldContextObject)
+	{
+		return;
+	}
+		
+	const UGuideMaskSettings* Settings = GetDefault<UGuideMaskSettings>();
+	if (ensureAlways(Settings) && Settings->DefaultLayer.ToSoftObjectPath().IsValid())
+	{
+		TSubclassOf<UGuideLayerBase> WidgetClass = Settings->DefaultLayer.LoadSynchronous();
+		UGuideLayerBase* GuideLayer = CreateWidget<UGuideLayerBase>(WorldContextObject->GetWorld(), WidgetClass);
+
+		if (!ensureMsgf(GuideLayer, TEXT("Invalid Default Layer Widget. %s"), ANSI_TO_TCHAR(__FUNCTION__)))
+		{
+			return;
+		}
+
+		GuideLayer->AddToViewport(InLayerZOrder);
+		GuideLayer->SetGuide(InTagWidget, InTag, InActionParam);
+	}
+}
+
+//
+//void UGuideMaskUIFunctionLibrary::ShowGuideListEntry(UObject* WorldContextObject, UListView* InTagListView, UObject* InListItem, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder, float InAsyncTimeout)
+//{
+//	if (nullptr == WorldContextObject)
+//	{
+//		return;
+//	}
+//
+//	if (UGuideListEntryAsyncAction* AsyncAction = 
+//		UGuideListEntryAsyncAction::Create(WorldContextObject->GetWorld(), 
+//			InTagListView, 
+//			InListItem, 
+//			InAsyncTimeout))
+//	{
+//		AsyncAction->OnReadyNative.AddWeakLambda(WorldContextObject,
+//			[InActionParam, InLayerZOrder](UObject* InWorldContextObject, UUserWidget* InEntryWidget)
+//			{
+//				UGuideMaskUIFunctionLibrary::ShowGuideWidget(InWorldContextObject, InEntryWidget, InActionParam, InLayerZOrder);
+//			});
+//
+//		AsyncAction->Activate();
+//	}
+//}
+//
+//
+
 
 void UGuideMaskUIFunctionLibrary::GetAllGuideRegisters(UObject* WorldContextObject, TArray<UGuideMaskRegister*>& FoundWidgets)
 {

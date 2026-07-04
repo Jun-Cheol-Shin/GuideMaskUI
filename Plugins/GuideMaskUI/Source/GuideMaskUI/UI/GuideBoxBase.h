@@ -28,7 +28,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGuideKeyBoardUp,
 	const FGeometry&, InGeometry,
 	const FKeyEvent&, InKeyEvent);
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCompleteGuideAction);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCompleteGuideAction, FName, GuideTag);
 
 DECLARE_DYNAMIC_DELEGATE(FOnWidgetAction);
 
@@ -59,14 +59,11 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::DownAndUp == ActionType || EGuideActionType::Hold == ActionType", EditConditionHides))
 	FKey ActivationKey;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::DownAndUp != ActionType && EGuideActionType::KeyEvent != ActionType && EGuideActionType::Hold != ActionType", EditConditionHides))
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::DownAndUp != ActionType && EGuideActionType::None_Action != ActionType && EGuideActionType::Hold != ActionType", EditConditionHides))
 	float DragThresholdVectorSize = 0.f;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::Hold == ActionType", EditConditionHides))
 	float HoldSeconds = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction")
-	FOnWidgetAction WidgetActionEvent;
 };
 
 
@@ -76,11 +73,11 @@ class GUIDEMASKUI_API UGuideBoxBase : public UUserWidget
 	GENERATED_BODY()
 
 public:
-	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
-	void SetGuideWidget(UWidget* InWidget);
+	//UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
+	//void SetGuideWidget(UWidget* InWidget);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
-	void SetGuideAction(const FGuideBoxActionParameters& InActionParam);
+	void SetGuide(FName InTag, const FGuideBoxActionParameters& InActionParam);
 
 	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	EGuideActionType GetActionType() const { return ActionParam.ActionType; }
@@ -91,8 +88,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	FKey GetCurrentActionKey() const { return ActionParam.ActivationKey; }
 
+	/*UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
+	UWidget* GetActionWidget() const { return ActionWidget.IsValid() ? ActionWidget.Get() : nullptr; }*/
+
 	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
-	UWidget* GetActionWidget() const { return ActionWidget.IsValid() ? ActionWidget.Get() : nullptr; }
+	FName GetCurrentGuideTag() const { return GuideTag; }
 
 	UFUNCTION(BlueprintCallable, Category = "GuideBoxBase")
 	void ForcedEndAction();
@@ -157,17 +157,18 @@ private:
 	bool IsDragType(EGuideActionType InType) const;
 
 protected:
-	TWeakObjectPtr<UWidget> ActionWidget = nullptr;
+	//TWeakObjectPtr<UWidget> ActionWidget = nullptr;
 
-	UPROPERTY(BlueprintReadWrite, BlueprintSetter = SetGuideAction)
+	UPROPERTY(BlueprintReadWrite)
 	FGuideBoxActionParameters ActionParam {};
 
 private:
+	FName GuideTag = FName();
 	double StartTime = 0.f;
 	FVector2D TouchStartPos = FVector2D();
 	float ActionDPIScale = 0.f;
 	float CorrectedDragThreshold = 0.f;
 
-	EButtonClickMethod::Type CachedClickMethod = EButtonClickMethod::DownAndUp;
-	EButtonTouchMethod::Type CachedTouchMethod = EButtonTouchMethod::DownAndUp;
+	//EButtonClickMethod::Type CachedClickMethod = EButtonClickMethod::DownAndUp;
+	//EButtonTouchMethod::Type CachedTouchMethod = EButtonTouchMethod::DownAndUp;
 };

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
-#include "EntryGuideIdentifiable.generated.h"
+#include "NestedWidgetProvidable.generated.h"
 
 
 class UUserWidget;
@@ -13,7 +13,7 @@ class UWidget;
 
 // This class does not need to be modified.
 UINTERFACE(MinimalAPI)
-class UEntryGuideIdentifiable : public UInterface
+class UNestedWidgetProvidable : public UInterface
 {
 	GENERATED_BODY()
 };
@@ -21,7 +21,7 @@ class UEntryGuideIdentifiable : public UInterface
 /**
  * 
  */
-class GUIDEMASKUI_API IEntryGuideIdentifiable
+class GUIDEMASKUI_API INestedWidgetProvidable
 {
 	GENERATED_BODY()
 
@@ -29,7 +29,7 @@ class GUIDEMASKUI_API IEntryGuideIdentifiable
 
 public:
 	UFUNCTION(BlueprintNativeEvent, BlueprintCosmetic, meta = (Category = "Guide Mask UI Plugin", DisplayName = "On Get Desired Nested Widgets"))
-	void GetDesiredNestedWidgets(TArray<UWidget*>& OutParam);
+	void GetDesiredNestedWidgets(TArray<UWidget*>& OutParam) const;
 	virtual void GetDesiredNestedWidgets_Implementation(TArray<UWidget*>& OutParam) const {};
 
 };

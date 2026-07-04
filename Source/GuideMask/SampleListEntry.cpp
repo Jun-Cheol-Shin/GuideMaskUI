@@ -20,3 +20,13 @@ void USampleListEntry::NativeOnListItemObjectSet(UObject* ListItemObject)
 	}
 
 }
+
+void USampleListEntry::NativeOnShow()
+{
+	UE_LOG(LogTemp, Warning, TEXT("On Show!! %s"), ANSI_TO_TCHAR(__FUNCTION__));
+}
+
+void USampleListEntry::NativeOnAction()
+{
+	UE_LOG(LogTemp, Warning, TEXT("On Action!! %s"), ANSI_TO_TCHAR(__FUNCTION__));
+}

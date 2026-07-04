@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 #include "Blueprint/IUserObjectListEntry.h"
+#include "GuideMaskUI/GuideActionable.h"
 #include "SampleListEntry.generated.h"
 
 
@@ -20,13 +21,15 @@ public:
 };
 
 UCLASS()
-class GUIDEMASK_API USampleListEntry : public UUserWidget, public IUserObjectListEntry
+class GUIDEMASK_API USampleListEntry : public UUserWidget, public IUserObjectListEntry, public IGuideActionable
 {
 	GENERATED_BODY()
 	
 protected:
 	virtual void NativeOnListItemObjectSet(UObject* ListItemObject) override;
 	
+	virtual void NativeOnShow() override;
+	virtual void NativeOnAction() override;
 	
 private:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, meta = (BindWidget, AllowPrivateAccess = "true"))

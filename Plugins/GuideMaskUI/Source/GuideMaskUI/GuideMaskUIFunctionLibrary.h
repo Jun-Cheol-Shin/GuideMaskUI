@@ -17,7 +17,6 @@ enum class EGuideWidgetPredTarget : uint8
 {
 	ListItem		UMETA(DisplayName = "List Item (UObject)"),
 	EntryWidget		UMETA(DisplayName = "Dynamic Entry Widget (UUserWidget)"),
-
 };
 
 
@@ -29,8 +28,10 @@ struct FGuideDynamicWidgetPath
 	GENERATED_BODY()
 
 public:
+	FGuideDynamicWidgetPath() {};
+
 	UPROPERTY(EditAnywhere, Category = "GuideDynamicWidgetPath")
-	FOnGetDynamicEntryDynamicEvent Predicate;
+	FOnGetDynamicEntryDynamicEvent Predicate {};
 
 	UPROPERTY(EditAnywhere, Category = "GuideDynamicWidgetPath")
 	int NextChildIndex = -1;
@@ -45,16 +46,9 @@ class GUIDEMASKUI_API UGuideMaskUIFunctionLibrary : public UBlueprintFunctionLib
 {
 	GENERATED_BODY()
 	
-	
 public:
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
-	static void ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0);
-
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
-	static void ShowGuideListEntry(UObject* WorldContextObject, UListView* InTagListView, UObject* InListItem, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0, float InAsyncTimeout = 1.f);
-
-	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
-	static void ShowGuideDynamicWidget(UObject* WorldContextObject, UWidget* InWidget, const TArray<FGuideDynamicWidgetPath>& InPath, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0, float InAsyncTimeout = 1.f);
+	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject", AutoCreateRefTerm = "InPath"))
+	static void ShowGuide(UObject* WorldContextObject, FName InTag, const FGuideBoxActionParameters& InActionParam, const TArray<FGuideDynamicWidgetPath>& InPath, int InLayerZOrder = 0, float InAsyncTimeout = 1.f);
 
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject", DeterminesOutputType = "WidgetClass", DynamicOutputParam = "FoundWidgets"))
 	static void GetAllGuideRegisters(UObject* WorldContextObject, TArray<UGuideMaskRegister*>& FoundWidgets);
@@ -65,4 +59,7 @@ public:
 	UFUNCTION(BlueprintCallable, BlueprintCosmetic, Category = "Guide Mask UI Functions", meta = (WorldContext = "WorldContextObject"))
 	static UGuideMaskRegister* GetRegister(UObject* WorldContextObject, const FName& InTag);
 
+private:
+	static void ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0);
+	static void ShowGuideInternal(UObject* WorldContextObject, UWidget* InWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, const TArray<FGuideDynamicWidgetPath>& InPath, int InLayerZOrder = 0, float InAsyncTimeout = 1.f);
 };

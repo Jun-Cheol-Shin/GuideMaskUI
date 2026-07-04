@@ -10,7 +10,7 @@
 #include "Components/DynamicEntryBox.h"
 #include "Components/WrapBox.h"
 
-#include "../EntryGuideIdentifiable.h"
+#include "../NestedWidgetProvidable.h"
 #include "../GuideMaskUIFunctionLibrary.h"
 
 #include "Runtime/Launch/Resources/Version.h"
@@ -153,7 +153,7 @@ void UGuideMaskRegister::CreatePreviewLayer(const FGeometry& InViewportGeometry)
 #endif
 		}
 
-		Layer->SetPreviewGuide(InViewportGeometry, nullptr != TargetWidget ? TargetWidget : Target);
+		Layer->NativeOnPreviewGuide(InViewportGeometry, nullptr != TargetWidget ? TargetWidget : Target);
 	}
 }
 
@@ -237,14 +237,14 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 	{
 		if (WidgetBlueprint->GeneratedClass)
 		{
-			if (WidgetBlueprint->GeneratedClass->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			if (WidgetBlueprint->GeneratedClass->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 			{
-				CompileLog.Error(LOCTEXT("GuideMaskRegister", "Do not Inherited EntryGuideIdentifiable Interface!"));
+				CompileLog.Error(LOCTEXT("GuideMaskRegister", "GuideMaskRegister root widget must not implement NestedWidgetProvidable. Implement it only on list or dynamic entry widgets."));
 			}
 
 			if (WidgetBlueprint->GeneratedClass->ImplementsInterface(UUserObjectListEntry::StaticClass()))
 			{
-				CompileLog.Error(LOCTEXT("GuideMaskRegister", "Do not Inherited UserObjectListEntry Interface!"));
+				CompileLog.Error(LOCTEXT("GuideMaskRegister", "GuideMaskRegister root widget must not implement UserObjectListEntry. Use that interface only on entry widgets."));
 			}
 		}
 
@@ -273,10 +273,10 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 		if (UListViewBase* ListView = Cast<UListViewBase>(Widget))
 		{
 			UClass* WidgetClass = ListView->GetEntryWidgetClass();
-			if (WidgetClass && false == WidgetClass->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			if (WidgetClass && false == WidgetClass->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 			{
-				CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister", 
-					"{0} Class doesn't implement EntryGuideIdentifiable Interface!"), 
+				CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister",
+					"List entry widget class '{0}' must implement EntryGuideIdentifiable so GuideMaskRegister can resolve nested guide targets."),
 					FText::FromString(WidgetClass->GetName())));
 			}
 
@@ -285,10 +285,10 @@ void UGuideMaskRegister::ValidateCompiledDefaults(IWidgetCompilerLog& CompileLog
 		else if (UDynamicEntryBox* EntryBox = Cast<UDynamicEntryBox>(Widget))
 		{
 			UClass* WidgetClass = EntryBox->GetEntryWidgetClass();
-			if (WidgetClass && false == WidgetClass->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+			if (WidgetClass && false == WidgetClass->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 			{
 				CompileLog.Error(FText::Format(LOCTEXT("GuideMaskRegister",
-					"{0} Class doesn't implement EntryGuideIdentifiable Interface!"),
+					"Dynamic entry widget class '{0}' must implement EntryGuideIdentifiable so GuideMaskRegister can resolve nested guide targets."),
 					FText::FromString(WidgetClass->GetName())));
 			}
 		}
@@ -359,6 +359,7 @@ void UGuideMaskRegister::PostEditChangeProperty(FPropertyChangedEvent& PropertyC
 	}
 }
 
+#endif
 
 void UGuideMaskRegister::ConstructWidgetTree(OUT TArray<FGuideHierarchyNode>& OutNodeTree, UWidget* InWidget) const
 {
@@ -386,27 +387,27 @@ void UGuideMaskRegister::ConstructWidgetTree(OUT TArray<FGuideHierarchyNode>& Ou
 	}
 
 
-	UUserWidget* Entry = 
+	UUserWidget* Entry =
 #if ENGINE_MAJOR_VERSION >= 5
 		true == EntryList.IsEmpty() ?
 #else
 		0 >= EntryList.Num() ?
 #endif
-		nullptr != EntryClass ? 
+		nullptr != EntryClass ?
 		CreateWidget<UUserWidget>(GetWorld(), EntryClass) : nullptr : *EntryList.begin();
 
-	TArray<UWidget*> ContainerWidget {};
+	TArray<UWidget*> ContainerWidget{};
 
 	if (nullptr != Entry)
 	{
 		TArray<UWidget*> Childs;
 
-		if (true == Entry->GetClass()->ImplementsInterface(UEntryGuideIdentifiable::StaticClass()))
+		if (true == Entry->GetClass()->ImplementsInterface(UNestedWidgetProvidable::StaticClass()))
 		{
-			IEntryGuideIdentifiable::Execute_GetDesiredNestedWidgets(Entry, OUT Childs);
+			INestedWidgetProvidable::Execute_GetDesiredNestedWidgets(Entry, OUT Childs);
 		}
 
-		else if (IEntryGuideIdentifiable* Identify = Cast<IEntryGuideIdentifiable>(Entry))
+		else if (INestedWidgetProvidable* Identify = Cast<INestedWidgetProvidable>(Entry))
 		{
 			Identify->GetDesiredNestedWidgets_Implementation(OUT Childs);
 		}
@@ -430,17 +431,13 @@ void UGuideMaskRegister::ConstructWidgetTree(OUT TArray<FGuideHierarchyNode>& Ou
 	{
 		OutNodeTree.Emplace(NewNode);
 	}
-	
+
 
 	for (int i = 0; i < ContainerWidget.Num(); ++i)
 	{
 		ConstructWidgetTree(OutNodeTree, ContainerWidget[i]);
 	}
-
 }
-
-#endif
-
 
 bool UGuideMaskRegister::IsContains(const FName& InTag) const
 {
@@ -455,7 +452,7 @@ TArray<FName> UGuideMaskRegister::GetTagList() const
 	return Retval;
 }
 
-UWidget* UGuideMaskRegister::GetTagWidget(const FName& InGuideTag)
+UWidget* UGuideMaskRegister::GetTagWidget(const FName& InGuideTag) const
 {
 	if (TagWidgetList.Contains(InGuideTag))
 	{
@@ -463,6 +460,38 @@ UWidget* UGuideMaskRegister::GetTagWidget(const FName& InGuideTag)
 	}
 
 	return nullptr;
+}
+
+UWidget* UGuideMaskRegister::OnGenerateVisualWidget(const UWidget* InSourceWidget) const
+{
+	if (BP_OnGenerateVisualWidget.IsBound())
+	{
+		return BP_OnGenerateVisualWidget.Execute(InSourceWidget);
+	}
+
+	UWidget* VisualWidget = nullptr;
+
+	if (nullptr != InSourceWidget)
+	{
+		VisualWidget = DuplicateObject<UWidget>(InSourceWidget, InSourceWidget->GetOuter());
+		VisualWidget->SetRenderTransform(InSourceWidget->GetRenderTransform());
+		VisualWidget->SetRenderTransformPivot(InSourceWidget->GetRenderTransformPivot());
+
+		// 비쥬얼 위젯은 터치가 들어가면 안됨
+		VisualWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+	}
+
+	return VisualWidget;
+}
+
+void UGuideMaskRegister::OnShow(FName InTag)
+{
+	BP_OnShowGuide.Broadcast(InTag);
+}
+
+void UGuideMaskRegister::OnAction(FName InTag)
+{
+	BP_OnActionGuide.Broadcast(InTag);
 }
 
 bool UGuideMaskRegister::GetGuideWidgetTree(OUT TArray<FGuideHierarchyNode>& OutWidgetTree, const FName& InGuideTag)
@@ -630,5 +659,14 @@ void UGuideMaskRegister::SynchronizeProperties()
 
 }
 
+FOnShowGuideDynamic& UGuideMaskRegister::OnShowGuide()
+{
+	return BP_OnShowGuide;
+}
+
+FOnActionGuideDynamic& UGuideMaskRegister::OnActionGuide()
+{
+	return BP_OnActionGuide;
+}
 
 #undef LOCTEXT_NAMESPACE
