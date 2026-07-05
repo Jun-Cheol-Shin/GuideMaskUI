@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
+#include "GuideVisualWidgetHost.h"
 #include "GuideBoxBase.generated.h"
 
 //class UProgressBar;
@@ -30,44 +31,8 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnGuideKeyBoardUp,
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnCompleteGuideAction, FName, GuideTag);
 
-DECLARE_DYNAMIC_DELEGATE(FOnWidgetAction);
 
-UENUM(BlueprintType)
-enum class EGuideActionType : uint8
-{
-	DownAndUp = 0,
-	Hold,
-
-	Drag,
-	Swipe_Up,
-	Swipe_Down,
-	Swipe_Left,
-	Swipe_Right,
-
-	None_Action,
-};
-
-USTRUCT(BlueprintType)
-struct FGuideBoxActionParameters
-{
-	GENERATED_BODY()
-
-public:
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction")
-	EGuideActionType ActionType = EGuideActionType::None_Action;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::DownAndUp == ActionType || EGuideActionType::Hold == ActionType", EditConditionHides))
-	FKey ActivationKey;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::DownAndUp != ActionType && EGuideActionType::None_Action != ActionType && EGuideActionType::Hold != ActionType", EditConditionHides))
-	float DragThresholdVectorSize = 0.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "GuideBoxAction", meta = (EditCondition = "EGuideActionType::Hold == ActionType", EditConditionHides))
-	float HoldSeconds = 0.f;
-};
-
-
-UCLASS()
+UCLASS(meta = (Deprecated, DeprecationMessage = "Use UGuideVisualWidgetHost instead."))
 class GUIDEMASKUI_API UGuideBoxBase : public UUserWidget
 {
 	GENERATED_BODY()

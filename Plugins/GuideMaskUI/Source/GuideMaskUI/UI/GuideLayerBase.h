@@ -4,15 +4,13 @@
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
-#include "GuideBoxBase.h"
 #include "GuideLayerBase.generated.h"
 
-class USizeBox;
 class UCanvasPanel;
 class UImage;
 
-class UGuideBoxBase;
 class UGuideMaskRegister;
+class UGuideVisualWidgetHost;
 struct FGuideBoxActionParameters;
 
 UCLASS()
@@ -24,7 +22,7 @@ class GUIDEMASKUI_API UGuideLayerBase : public UUserWidget
 
 public:
 	UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
-	void SetGuide(const UWidget* InSourceWidget, FName InTag, const FGuideBoxActionParameters& InParameter);
+	void SetGuide(UWidget* InSourceWidget, FName InTag, const FGuideBoxActionParameters& InParameter);
 
 	//UFUNCTION(BlueprintCallable, Category = "GuideLayerBase")
 	//FVector2D GetWidgetPosition() const;
@@ -102,6 +100,25 @@ protected:
 
 	virtual void SynchronizeProperties() override;
 
+	// VisualWidgetHost
+
+	//void OnVisualMouseButtonDown(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+	//void OnVisualMouseButtonMove(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+	//void OnVisualMouseButtonUp(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+
+	//void OnVisualMouseEnter(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+	//void OnVisualMouseLeave(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+
+	//void OnVisualTouchStarted(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+	//void OnVisualTouchMoved(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+	//void OnVisualTouchEnded(const FGeometry& InGeometry, const FPointerEvent& InMouseEvent);
+
+	//void OnVisualKeyDown(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent);
+	//void OnVisualKeyUp(const FGeometry& InGeometry, const FKeyEvent& InKeyEvent);
+
+	// End VisualWidgetHost
+
+
 private:
 	void OnResizedViewport(FViewport* InViewport, uint32 InMessage);
 	
@@ -137,18 +154,14 @@ protected:
 	UImage* BlackScreen;
 
 	UPROPERTY(meta = (BindWidget, AllowPrivateAccess = "true"))
-	USizeBox* GuideBoxPanel;
+	UGuideVisualWidgetHost* VisualWidgetHost;
 
 protected:
 	UPROPERTY()
 	UMaterialInstanceDynamic* MaterialInstance = nullptr;
 
 	UPROPERTY(Transient)
-	UGuideBoxBase* BoxBaseWidget = nullptr;
-
-	UPROPERTY(Transient)
 	UWidget* VisualWidget = nullptr;
 
 	TWeakObjectPtr<UGuideMaskRegister> Register = nullptr;
-
 };

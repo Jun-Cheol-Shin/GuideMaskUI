@@ -476,9 +476,7 @@ UWidget* UGuideMaskRegister::OnGenerateVisualWidget(const UWidget* InSourceWidge
 		VisualWidget = DuplicateObject<UWidget>(InSourceWidget, InSourceWidget->GetOuter());
 		VisualWidget->SetRenderTransform(InSourceWidget->GetRenderTransform());
 		VisualWidget->SetRenderTransformPivot(InSourceWidget->GetRenderTransformPivot());
-
-		// 비쥬얼 위젯은 터치가 들어가면 안됨
-		VisualWidget->SetVisibility(ESlateVisibility::SelfHitTestInvisible);
+		VisualWidget->SetVisibility(InSourceWidget->GetVisibility());
 	}
 
 	return VisualWidget;

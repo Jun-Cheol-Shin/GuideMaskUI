@@ -26,7 +26,4 @@ public:
 public:
 	UPROPERTY(EditAnywhere, Config, Category = "GuideMaskSetting", meta = (AllowedClasses = "/Script/GuideMaskUI.GuideLayerBase"))
 	TSoftClassPtr<UGuideLayerBase> DefaultLayer;
-
-	UPROPERTY(EditAnywhere, Config, Category = "GuideMaskSetting", meta = (AllowedClasses = "/Script/GuideMaskUI.GuideBoxBase"))
-	TSoftClassPtr<UGuideBoxBase> DefaultBox;
 };
