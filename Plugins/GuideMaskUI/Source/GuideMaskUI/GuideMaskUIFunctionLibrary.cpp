@@ -41,7 +41,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject,
 #if ENGINE_MAJOR_VERSION >= 5
 	if (true == InPath.IsEmpty())
 	{
-		ShowGuideWidget(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
+		ShowLayer(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
 		return;
 	}
 #else
@@ -95,7 +95,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject,
 
 						if (false == Childs.IsValidIndex(ChildIndex))
 						{
-							ShowGuideWidget(InWorldContextObject, InEntryWidget, InTag, InActionParam, InLayerZOrder);
+							ShowLayer(InWorldContextObject, InEntryWidget, InTag, InActionParam, InLayerZOrder);
 						}
 
 						else
@@ -107,7 +107,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject,
 				AsyncAction->OnFailedNative.AddWeakLambda(WorldContextObject,
 					[InTag, WorldContextObject, ListView, InActionParam, InLayerZOrder]()
 					{
-						ShowGuideWidget(WorldContextObject, ListView, InTag, InActionParam, InLayerZOrder);
+						ShowLayer(WorldContextObject, ListView, InTag, InActionParam, InLayerZOrder);
 					});
 
 				AsyncAction->Activate();
@@ -139,7 +139,7 @@ void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject,
 
 			if (false == Childs.IsValidIndex(CurrentPath.NextChildIndex))
 			{
-				ShowGuideWidget(WorldContextObject, EntryPtr, InTag, InActionParam, InLayerZOrder);
+				ShowLayer(WorldContextObject, EntryPtr, InTag, InActionParam, InLayerZOrder);
 			}
 
 			else
@@ -150,17 +150,17 @@ void UGuideMaskUIFunctionLibrary::ShowGuideInternal(UObject* WorldContextObject,
 
 		else
 		{
-			ShowGuideWidget(WorldContextObject, EntryBox, InTag, InActionParam, InLayerZOrder);
+			ShowLayer(WorldContextObject, EntryBox, InTag, InActionParam, InLayerZOrder);
 		}
 	}
 
 	else
 	{
-		ShowGuideWidget(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
+		ShowLayer(WorldContextObject, InWidget, InTag, InActionParam, InLayerZOrder);
 	}
 }
 
-void UGuideMaskUIFunctionLibrary::ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
+void UGuideMaskUIFunctionLibrary::ShowLayer(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder)
 {
 	if (nullptr == WorldContextObject)
 	{

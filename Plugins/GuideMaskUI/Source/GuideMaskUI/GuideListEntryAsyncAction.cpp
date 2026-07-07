@@ -15,7 +15,7 @@ UGuideListEntryAsyncAction* UGuideListEntryAsyncAction::Create(UObject* InWorldC
 		NewAction->ListViewPtr = InListView;
 		NewAction->ItemPtr = InListItem;
 		NewAction->Timeout = FMath::Max(0.5f, InTimeout);
-
+		NewAction->WorldContext = World;
 		NewAction->RegisterWithGameInstance(World);
 	}
 
@@ -108,8 +108,11 @@ bool UGuideListEntryAsyncAction::Tick(float DeltaSeconds)
 
 void UGuideListEntryAsyncAction::Success(UUserWidget* EntryWidget)
 {
-	OnReadyNative.Broadcast(WorldContext, EntryWidget);
-	OnReady.Broadcast(WorldContext, EntryWidget);
+	if (WorldContext.IsValid())
+	{
+		OnReadyNative.Broadcast(WorldContext.Get(), EntryWidget);
+		OnReady.Broadcast(WorldContext.Get(), EntryWidget);
+	}
 
 	Clear();
 	SetReadyToDestroy();

@@ -53,7 +53,7 @@ private:
 	
 private:
 	UPROPERTY()
-	UObject* WorldContext;
+	TWeakObjectPtr<UObject> WorldContext;
 
 	UPROPERTY()
 	UListView* ListViewPtr;

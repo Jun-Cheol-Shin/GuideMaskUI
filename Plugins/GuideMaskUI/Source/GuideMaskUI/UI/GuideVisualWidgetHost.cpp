@@ -24,14 +24,10 @@ public:
 			return false;
 		}
 
-		const FVector2D ScreenPosition = MouseEvent.GetScreenSpacePosition();
-		const FGeometry& Geometry = Owner->GetCachedGeometry();
 
-		if (false == Geometry.GetLocalSize().IsNearlyZero() && Geometry.IsUnderLocation(ScreenPosition))
-		{
-			StartPos = Geometry.AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
-			bStartClick = true == MouseEvent.IsTouchEvent() ? Owner->HandleTouchStarted(MouseEvent) : Owner->HandleMouseButtonDown(MouseEvent);
-		}
+		StartPos = Owner->GetCachedGeometry().AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
+		bStartClick = true == MouseEvent.IsTouchEvent() ? 
+			Owner->HandleTouchStarted(MouseEvent, StartPos) : Owner->HandleMouseButtonDown(MouseEvent, StartPos);
 
 		return false;
 	}
@@ -44,8 +40,9 @@ public:
 		}
 
 		FVector2D CurrentPosition = Owner->GetCachedGeometry().AbsoluteToLocal(MouseEvent.GetScreenSpacePosition());
-		FVector2D MoveVec = CurrentPosition - StartPos;
-		true == MouseEvent.IsTouchEvent() ? Owner->HandleTouchMoved(MouseEvent, MoveVec) : Owner->HandleMouseMove(MouseEvent, MoveVec);
+		FVector2D MovedPos = CurrentPosition - StartPos;
+		true == MouseEvent.IsTouchEvent() ? 
+			Owner->HandleTouchMoved(MouseEvent, MovedPos) : Owner->HandleMouseMove(MouseEvent, MovedPos);
 
 		return false;
 	}
@@ -189,12 +186,19 @@ void UGuideVisualWidgetHost::OnAction()
 	Clear();
 }
 
-bool UGuideVisualWidgetHost::HandleMouseButtonDown(const FPointerEvent& InMouseEvent)
+bool UGuideVisualWidgetHost::HandleMouseButtonDown(const FPointerEvent& InMouseEvent, const FVector2D& InLocalStartPos)
 {
-	if (EGuideActionType::None_Action == ActionParam.ActionType)
+	const FGeometry& Geometry = GetCachedGeometry();
+	if (Geometry.GetLocalSize().IsNearlyZero() || false == Geometry.IsUnderLocation(InMouseEvent.GetScreenSpacePosition()))
 	{
 		return false;
 	}
+
+	else if (EGuideActionType::None_Action == ActionParam.ActionType)
+	{
+		return false;
+	}
+
 
 	if (ensure(InputProcessor.IsValid()) && EGuideActionType::Hold == ActionParam.ActionType)
 	{
@@ -206,7 +210,7 @@ bool UGuideVisualWidgetHost::HandleMouseButtonDown(const FPointerEvent& InMouseE
 	return true;
 }
 
-bool UGuideVisualWidgetHost::HandleMouseMove(const FPointerEvent& InMouseEvent, const FVector2D& MovedVector)
+bool UGuideVisualWidgetHost::HandleMouseMove(const FPointerEvent& InMouseEvent, const FVector2D& InLocalMovedPos)
 {
 	switch (ActionParam.ActionType)
 	{
@@ -214,7 +218,7 @@ bool UGuideVisualWidgetHost::HandleMouseMove(const FPointerEvent& InMouseEvent, 
 	{
 		OnMouseMoveEvent.Broadcast(GetCachedGeometry(), InMouseEvent);
 
-		if (CorrectedDragThreshold <= MovedVector.Size())
+		if (CorrectedDragThreshold <= InLocalMovedPos.Size())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Complete Drag!"));
 
@@ -229,13 +233,13 @@ bool UGuideVisualWidgetHost::HandleMouseMove(const FPointerEvent& InMouseEvent, 
 	case EGuideActionType::Swipe_Left:
 	case EGuideActionType::Swipe_Right:
 	{
-		if (true == IsCorrectSwipe(MovedVector))
+		if (true == IsCorrectSwipe(InLocalMovedPos))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Success Swipe!"));
 
 			OnMouseMoveEvent.Broadcast(GetCachedGeometry(), InMouseEvent);
 
-			if (CorrectedDragThreshold <= MovedVector.Size())
+			if (CorrectedDragThreshold <= InLocalMovedPos.Size())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Complete Drag!"));
 
@@ -264,7 +268,13 @@ bool UGuideVisualWidgetHost::HandleMouseButtonUp(const FPointerEvent& InMouseEve
 	{
 	case EGuideActionType::DownAndUp:
 	{
-		if (InMouseEvent.GetEffectingButton() == ActionParam.ActivationKey)
+		const FGeometry& Geometry = GetCachedGeometry();
+		if (Geometry.GetLocalSize().IsNearlyZero() || false == Geometry.IsUnderLocation(InMouseEvent.GetScreenSpacePosition()))
+		{
+			return false;
+		}
+
+		else if (InMouseEvent.GetEffectingButton() == ActionParam.ActivationKey)
 		{
 			OnAction();
 			return true;
@@ -278,8 +288,14 @@ bool UGuideVisualWidgetHost::HandleMouseButtonUp(const FPointerEvent& InMouseEve
 	return false;
 }
 
-bool UGuideVisualWidgetHost::HandleTouchStarted(const FPointerEvent& InTouchEvent)
+bool UGuideVisualWidgetHost::HandleTouchStarted(const FPointerEvent& InTouchEvent, const FVector2D& InLocalStartPos)
 {
+	const FGeometry& Geometry = GetCachedGeometry();
+	if (Geometry.GetLocalSize().IsNearlyZero() || false == Geometry.IsUnderLocation(InTouchEvent.GetScreenSpacePosition()))
+	{
+		return false;
+	}
+
 	if (EGuideActionType::None_Action == ActionParam.ActionType)
 	{
 		return false;
@@ -295,7 +311,7 @@ bool UGuideVisualWidgetHost::HandleTouchStarted(const FPointerEvent& InTouchEven
 	return true;
 }
 
-bool UGuideVisualWidgetHost::HandleTouchMoved(const FPointerEvent& InTouchEvent, const FVector2D& MovedVector)
+bool UGuideVisualWidgetHost::HandleTouchMoved(const FPointerEvent& InTouchEvent, const FVector2D& InLocalMovedPos)
 {
 	// todo : MovedEvent를 조건에 맞을 때만 뿌릴 것인가?
 
@@ -305,7 +321,7 @@ bool UGuideVisualWidgetHost::HandleTouchMoved(const FPointerEvent& InTouchEvent,
 	{
 		OnTouchMovedEvent.Broadcast(GetCachedGeometry(), InTouchEvent);
 
-		if (CorrectedDragThreshold <= MovedVector.Size())
+		if (CorrectedDragThreshold <= InLocalMovedPos.Size())
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Complete Drag!"));
 
@@ -320,13 +336,13 @@ bool UGuideVisualWidgetHost::HandleTouchMoved(const FPointerEvent& InTouchEvent,
 	case EGuideActionType::Swipe_Left:
 	case EGuideActionType::Swipe_Right:
 	{
-		if (true == IsCorrectSwipe(MovedVector))
+		if (true == IsCorrectSwipe(InLocalMovedPos))
 		{
 			UE_LOG(LogTemp, Warning, TEXT("Success Swipe!"));
 
 			OnTouchMovedEvent.Broadcast(GetCachedGeometry(), InTouchEvent);
 
-			if (CorrectedDragThreshold <= MovedVector.Size())
+			if (CorrectedDragThreshold <= InLocalMovedPos.Size())
 			{
 				UE_LOG(LogTemp, Warning, TEXT("Complete Drag!"));
 
@@ -349,10 +365,10 @@ bool UGuideVisualWidgetHost::HandleTouchMoved(const FPointerEvent& InTouchEvent,
 
 bool UGuideVisualWidgetHost::HandleTouchEnded(const FPointerEvent& InTouchEvent)
 {
-	if (EGuideActionType::None_Action == ActionParam.ActionType)
-	{
-		return false;
-	}
+	//if (EGuideActionType::None_Action == ActionParam.ActionType)
+	//{
+	//	return false;
+	//}
 
 	OnTouchEndedEvent.Broadcast(GetCachedGeometry(), InTouchEvent);
 
@@ -360,6 +376,12 @@ bool UGuideVisualWidgetHost::HandleTouchEnded(const FPointerEvent& InTouchEvent)
 	{
 	case EGuideActionType::DownAndUp:
 	{
+		const FGeometry& Geometry = GetCachedGeometry();
+		if (Geometry.GetLocalSize().IsNearlyZero() || false == Geometry.IsUnderLocation(InTouchEvent.GetScreenSpacePosition()))
+		{
+			return false;
+		}
+
 		OnAction();
 		return true;
 	}
@@ -470,13 +492,16 @@ void UGuideVisualWidgetHost::SynchronizeProperties()
 
 void UGuideVisualWidgetHost::ReleaseSlateResources(bool bReleaseChildren)
 {
-	Super::ReleaseSlateResources(bReleaseChildren);
-
-	FSlateApplication::Get().UnregisterInputPreProcessor(InputProcessor);
-	InputProcessor.Reset();
+	if (InputProcessor.IsValid())
+	{
+		FSlateApplication::Get().UnregisterInputPreProcessor(InputProcessor);
+		InputProcessor.Reset();
+	}
 
 	FViewport::ViewportResizedEvent.RemoveAll(this);
 	MyVisualHost.Reset();
+
+	Super::ReleaseSlateResources(bReleaseChildren);
 }
 
 void UGuideVisualWidgetHost::OnSlotAdded(UPanelSlot* InSlot)

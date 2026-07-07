@@ -138,12 +138,12 @@ public:
 
 private:
 	// 이벤트만 Broadcast 시킨 후, Unhandled로 리턴 (버블링이 되도록..)
-	bool HandleMouseButtonDown(const FPointerEvent& InMouseEvent);
+	bool HandleMouseButtonDown(const FPointerEvent& InMouseEvent, const FVector2D& InLocalStartPos);
 	bool HandleMouseButtonUp(const FPointerEvent& InMouseEvent);
-	bool HandleMouseMove(const FPointerEvent& InMouseEvent, const FVector2D& MovedVector);
+	bool HandleMouseMove(const FPointerEvent& InMouseEvent, const FVector2D& InLocalMovedPos);
 
-	bool HandleTouchStarted(const FPointerEvent& InTouchEvent);
-	bool HandleTouchMoved(const FPointerEvent& InTouchEvent, const FVector2D& MovedVector);
+	bool HandleTouchStarted(const FPointerEvent& InTouchEvent, const FVector2D& InLocalStartPos);
+	bool HandleTouchMoved(const FPointerEvent& InTouchEvent, const FVector2D& InLocalMovedPos);
 	bool HandleTouchEnded(const FPointerEvent& InTouchEvent);
 
 	bool HandleKeyDown(const FKeyEvent& InKeyEvent);

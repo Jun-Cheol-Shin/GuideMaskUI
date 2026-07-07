@@ -60,6 +60,6 @@ public:
 	static UGuideMaskRegister* GetRegister(UObject* WorldContextObject, const FName& InTag);
 
 private:
-	static void ShowGuideWidget(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0);
+	static void ShowLayer(UObject* WorldContextObject, UWidget* InTagWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, int InLayerZOrder = 0);
 	static void ShowGuideInternal(UObject* WorldContextObject, UWidget* InWidget, FName InTag, const FGuideBoxActionParameters& InActionParam, const TArray<FGuideDynamicWidgetPath>& InPath, int InLayerZOrder = 0, float InAsyncTimeout = 1.f);
 };
